@@ -22,6 +22,7 @@ import mujoco.usd.camera as camera_module
 import mujoco.usd.lights as light_module
 import mujoco.usd.objects as object_module
 import mujoco.usd.shapes as shapes_module
+
 import numpy as np
 from PIL import Image as im
 from PIL import ImageOps
@@ -29,6 +30,7 @@ import scipy
 import termcolor
 import tqdm
 
+import pxr
 from pxr import Sdf
 from pxr import Usd
 from pxr import UsdGeom
@@ -47,7 +49,7 @@ class USDExporter:
       output_directory_root: str = "./",
       light_intensity: int = 10000,
       camera_names: Optional[List[str]] = None,
-      specialized_materials_file: Optional[str] = None,
+      stage: Optional[pxr.Usd.Stage] = None,
       verbose: bool = True,
   ):
     """Initializes a new USD Exporter.
@@ -66,8 +68,6 @@ class USDExporter:
           and assets by the USD renderer.
         light_intensity: intensity of the light in the scene.
         camera_names: list of camera names to be used in the scene.
-        specialized_materials_file: path to a file containing a list of
-          materials to be used in the scene.
         verbose: decides whether to print updates.
     """
 
@@ -91,7 +91,7 @@ class USDExporter:
                 <visual>
                 <global offheight="my_height"/>
                 </visual>""".lstrip())
-
+    
     self.model = model
     self.height = height
     self.width = width
@@ -100,7 +100,7 @@ class USDExporter:
     self.output_directory_root = output_directory_root
     self.light_intensity = light_intensity
     self.camera_names = camera_names
-    self.specialized_materials_file = specialized_materials_file
+    self.stage = stage
     self.verbose = verbose
 
     self.frame_count = 0  # maintains how many times we have saved the scene
@@ -133,19 +133,24 @@ class USDExporter:
   def scene(self):
     """Returns the scene."""
     return self.renderer.scene
+  
+  @property
+  def output_dir(self):
+    return os.path.abspath(self.output_directory_path)
 
   def _initialize_usd_stage(self):
     """Initializes a USD stage to represent the mujoco scene."""
-    self.stage = Usd.Stage.CreateInMemory()
-    UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.z)
-    self.stage.SetStartTimeCode(0)
-    # add as user input
-    self.stage.SetTimeCodesPerSecond(60.0)
+    if not self.stage:
+      self.stage = Usd.Stage.CreateInMemory()
+      UsdGeom.SetStageUpAxis(self.stage, UsdGeom.Tokens.z)
+      self.stage.SetStartTimeCode(0)
+      # add as user input
+      self.stage.SetTimeCodesPerSecond(60.0)
 
-    default_prim = UsdGeom.Xform.Define(
-        self.stage, Sdf.Path("/World")
-    ).GetPrim()
-    self.stage.SetDefaultPrim(default_prim)
+      default_prim = UsdGeom.Xform.Define(
+          self.stage, Sdf.Path("/World")
+      ).GetPrim()
+      self.stage.SetDefaultPrim(default_prim)
 
   def _initialize_output_directories(self):
     """Initializes output directories to store frames and assets."""
@@ -220,16 +225,20 @@ class USDExporter:
 
       texture_file_name = f"texture_{texture_id}.png"
 
-      img.save(os.path.join(self.assets_directory, texture_file_name))
+      img_path = os.path.join(self.assets_directory, texture_file_name)
+      abs_path = os.path.abspath(img_path)
+      img.save(img_path)
 
-      relative_path = os.path.relpath(
+      rel_path = os.path.relpath(
           self.assets_directory, self.frames_directory
       )
-      img_path = os.path.join(
-          relative_path, texture_file_name
+      rel_path = os.path.join(
+          rel_path, texture_file_name
       )
 
-      self.texture_files.append(img_path)
+      # self.texture_files.append(rel_path) # works for sharing
+      self.texture_files.append(abs_path) # works for not sharing
+      
 
       data_adr += pixels
 
@@ -248,11 +257,11 @@ class USDExporter:
 
     assert geom_name not in self.geom_names
 
-    texture_file = (
-        self.texture_files[self.model.mat_texid[geom.matid][0]]
-        if geom.matid != -1
-        else None
-    )
+    texture_idx = self.model.mat_texid[geom.matid][0] if geom.matid != -1 else None
+    if not texture_idx or texture_idx == -1:
+      texture_file = None
+    else:
+      texture_file = self.texture_files[texture_idx]
 
     # handling meshes in our scene
     if geom.type == mujoco.mjtGeom.mjGEOM_MESH:
