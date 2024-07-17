@@ -48,6 +48,7 @@ class USDExporter:
       output_directory_name: str = "mujoco_usdpkg",
       output_directory_root: str = "./",
       light_intensity: int = 10000,
+      shareable: bool = False,
       camera_names: Optional[List[str]] = None,
       stage: Optional[pxr.Usd.Stage] = None,
       verbose: bool = True,
@@ -67,7 +68,10 @@ class USDExporter:
         output_directory_root: path to root directory storing generated frames
           and assets by the USD renderer.
         light_intensity: intensity of the light in the scene.
+        shareable: allows usd file and assets to be shared by using relative
+          instead of absolute paths
         camera_names: list of camera names to be used in the scene.
+        stage: predefined stage to add objects in the scene to
         verbose: decides whether to print updates.
     """
 
@@ -99,6 +103,7 @@ class USDExporter:
     self.output_directory_name = output_directory_name
     self.output_directory_root = output_directory_root
     self.light_intensity = light_intensity
+    self.shareable = shareable
     self.camera_names = camera_names
     self.stage = stage
     self.verbose = verbose
@@ -236,9 +241,7 @@ class USDExporter:
           rel_path, texture_file_name
       )
 
-      # self.texture_files.append(rel_path) # works for sharing
-      self.texture_files.append(abs_path) # works for not sharing
-      
+      self.texture_files.append(rel_path if self.shareable else abs_path)
 
       data_adr += pixels
 
