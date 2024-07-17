@@ -14,7 +14,9 @@
 # ==============================================================================
 """Camera handling for USD exporter."""
 
-import mujoco.usd.utils as utils_component
+from typing import List, Optional, Tuple
+
+import mujoco.usd.utils as utils_module
 
 import numpy as np
 
@@ -22,15 +24,13 @@ from pxr import Gf
 from pxr import Usd
 from pxr import UsdGeom
 
-
 class USDCamera:
-  """Class that handles the cameras in the USD scene."""
-
-  def __init__(self, stage: Usd.Stage, obj_name: str):
+  """Class that handles the cameras in the USD scene"""
+  def __init__(self, stage: Usd.Stage, camera_name: str):
     self.stage = stage
 
-    xform_path = f"/World/Camera_Xform_{obj_name}"
-    camera_path = f"{xform_path}/Camera_{obj_name}"
+    xform_path = f"/World/Camera_Xform_{camera_name}"
+    camera_path = f"{xform_path}/Camera_{camera_name}"
     self.usd_xform = UsdGeom.Xform.Define(stage, xform_path)
     self.usd_camera = UsdGeom.Camera.Define(stage, camera_path)
     self.usd_prim = stage.GetPrimAtPath(camera_path)
@@ -46,8 +46,8 @@ class USDCamera:
     self.usd_camera.GetClippingRangeAttr().Set(Gf.Vec2f(1e-4, 1e6))
 
   def update(self, cam_pos: np.ndarray, cam_mat: np.ndarray, frame: int):
-    """Updates the position and orientation of the camera in the scene."""
-    transformation_mat = utils_component.create_transform_matrix(
+    """Updates the position and orientation of the camera in the scene"""
+    transformation_mat = utils_module.create_transform_matrix(
         rotation_matrix=cam_mat, translation_vector=cam_pos
     ).T
     self.transform_op.Set(Gf.Matrix4d(transformation_mat.tolist()), frame)

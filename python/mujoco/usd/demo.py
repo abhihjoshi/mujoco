@@ -36,11 +36,13 @@ def generate_usd_trajectory(local_args):
       camera_names=local_args.camera_names,
   )
 
+  cam = mujoco.MjvCamera()
+    
   # step through the simulation for the given duration of time
   while d.time < local_args.duration:
     mujoco.mj_step(m, d)
     if exp.frame_count < d.time * local_args.framerate:
-      exp.update_scene(data=d)
+      exp.update_scene(data=d, camera=cam)
 
   exp.save_scene(filetype=local_args.export_extension)
 

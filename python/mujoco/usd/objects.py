@@ -31,8 +31,11 @@ from pxr import UsdShade
 from pxr import Vt
 
 
+import mujoco.usd.utils as utils_module
+import mujoco.usd.shapes as shapes_module
+
 class USDObject(abc.ABC):
-  """Abstract interface for all USD objects including meshes and primitives.
+  """ Abstract interface for all USD objects including meshes and primitives.
 
   Subclasses must implement:
 
@@ -182,8 +185,10 @@ class USDObject(abc.ABC):
       frame: int,
       scale: Optional[np.ndarray] = None,
   ):
-    """Updates the position and orientation of an object."""
-    transformation_mat = utils_component.create_transform_matrix(
+    """Updates the position and orientation of an object
+       in the scene for a given frame.
+    """
+    transformation_mat = utils_module.create_transform_matrix(
         rotation_matrix=mat, translation_vector=pos
     ).T
     self.transform_op.Set(Gf.Matrix4d(transformation_mat.tolist()), frame)
@@ -317,7 +322,12 @@ class USDPrimitiveMesh(USDObject):
       rgba: np.ndarray = np.array([1, 1, 1, 1]),
       texture_file: Optional[str] = None,
   ):
-    super().__init__(stage, geom, obj_name, rgba, texture_file)
+
+    super().__init__(stage,
+                     geom,
+                     obj_name,
+                     rgba,
+                     texture_file)
 
     self.mesh_config = mesh_config
     self.prim_mesh = self.generate_primitive_mesh()
@@ -351,7 +361,7 @@ class USDPrimitiveMesh(USDObject):
 
   def generate_primitive_mesh(self):
     """Generates the mesh for the primitive USD object."""
-    _, prim_mesh = shapes_component.mesh_generator(self.mesh_config)
+    _, prim_mesh = shapes_module.mesh_generator(self.mesh_config)
     prim_mesh.translate(-prim_mesh.get_center())
     return prim_mesh
 
@@ -442,7 +452,7 @@ class USDTendon(USDObject):
     """Generates the tendon mesh using primitives."""
     mesh_parts = {}
     for part_config in self.mesh_config:
-      mesh_name, prim_mesh = shapes_component.mesh_generator(part_config)
+      mesh_name, prim_mesh = shapes_module.mesh_generator(part_config)
       prim_mesh.translate(-prim_mesh.get_center())
       mesh_parts[mesh_name] = prim_mesh
     return mesh_parts
