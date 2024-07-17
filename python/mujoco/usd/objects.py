@@ -18,10 +18,11 @@ import abc
 import collections
 from typing import Optional
 
-import mujoco
-import mujoco.usd.shapes as shapes_component
-import mujoco.usd.utils as utils_component
 import numpy as np
+
+import mujoco
+import mujoco.usd.shapes as shapes_module
+import mujoco.usd.utils as utils_module
 
 from pxr import Gf
 from pxr import Sdf
@@ -29,10 +30,6 @@ from pxr import Usd
 from pxr import UsdGeom
 from pxr import UsdShade
 from pxr import Vt
-
-
-import mujoco.usd.utils as utils_module
-import mujoco.usd.shapes as shapes_module
 
 class USDObject(abc.ABC):
   """ Abstract interface for all USD objects including meshes and primitives.

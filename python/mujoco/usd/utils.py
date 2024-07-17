@@ -23,7 +23,7 @@ def get_texture_name(texid, rgba) -> str:
   res += ".png"
   return res
 
-def create_transform_matrix(rotation_matrix, translation_vector):
+def create_transform_matrix(rotation_matrix, translation_vector) -> np.array:
   # Ensure rotation_matrix and translation_vector are NumPy arrays
   rotation_matrix = np.array(rotation_matrix)
   translation_vector = np.array(translation_vector)

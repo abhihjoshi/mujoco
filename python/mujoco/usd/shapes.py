@@ -18,7 +18,6 @@ import mujoco
 import numpy as np
 import open3d as o3d
 
-
 def create_hemisphere(
     radius: float, theta_steps: int = 50, phi_steps: int = 50
 ):
@@ -40,7 +39,6 @@ def create_hemisphere(
 
   return mesh
 
-
 def decouple_config(config: dict[str, any]):
   """Breaks a shape config into is subcomponent shapes."""
   decoupled_config = []
@@ -54,7 +52,6 @@ def decouple_config(config: dict[str, any]):
     })
 
   return decoupled_config
-
 
 def mesh_config_generator(
     name: str,
@@ -125,7 +122,6 @@ def mesh_config_generator(
     config = decouple_config(config)
 
   return config
-
 
 def mesh_generator(
     mesh_config: dict[str, any],

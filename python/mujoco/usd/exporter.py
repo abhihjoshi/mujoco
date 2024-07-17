@@ -73,9 +73,7 @@ class USDExporter:
           files to be shared across users.
         framerate: framerate of the exported scene when rendered
         camera_names: list of fixed cameras defined in the mujoco model to render.
-        specialized_materials_file (TODO): file containing references to external
-          materials to attach to objects in the scene (primarily for those using 
-          Nvidia Omniverse).
+        stage: predefined stage to add objects in the scene to.
         verbose: decides whether to print updates.
     """
 
@@ -116,7 +114,7 @@ class USDExporter:
   @property
   def scene(self):
     """Returns the scene."""
-    return self.renderer.scene
+    return self._scene
   
   @property
   def output_dir(self):
@@ -246,8 +244,8 @@ class USDExporter:
     if self.verbose:
       mat_range = tqdm.tqdm(mat_range)
     for matid in mat_range:
-      texid = self.model.mat_texid[matid][0] if matid > -1 else -1
-      if texid > -1:
+      texid = self.model.mat_texid[matid][0] if matid > -1 else None
+      if texid and texid > -1:
         rgba = self.model.mat_rgba[matid]
 
         texture_height = self.model.tex_height[texid]
