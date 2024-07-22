@@ -230,51 +230,43 @@ class USDExporter:
     self.updates += 1
 
   def _load_textures(self) -> None:
-    data_adrs = [0]
-    for texid in range(self.model.ntex):
-      texture_height = self.model.tex_height[texid]
-      texture_width = self.model.tex_width[texid]
-      pixels = 3 * texture_height * texture_width
-      data_adrs.append(data_adrs[texid] + pixels)
-
     data_adr = 0
-    self.texture_files = {}
+    self.texture_files = []
+    for texture_id in range(self.model.ntex):
+      texture_height = self.model.tex_height[texture_id]
+      texture_width = self.model.tex_width[texture_id]
+      texture_nchannel = self.model.tex_nchannel[texture_id]
+      pixels = texture_nchannel * texture_height * texture_width
+      img = im.fromarray(
+          self.model.tex_data[data_adr : data_adr + pixels].reshape(
+              texture_height, texture_width, 3
+          )
+      )
+      texture_file_name = f"texture_{texture_id}.png"
+      img = ImageOps.flip(img)
+      img_path = os.path.join(self.assets_directory, texture_file_name)
+      abs_img_path = os.path.abspath(img_path)
+      img.save(img_path)
 
-    mat_range = range(self.model.nmat)
+      rel_path = os.path.relpath(
+        self.assets_directory, self.frames_directory
+      )
+      rel_img_path = os.path.join(
+        rel_path, texture_file_name
+      )
+
+      self.texture_files.append(rel_img_path if self.shareable else abs_img_path)
+
+      data_adr += pixels
+
     if self.verbose:
-      mat_range = tqdm.tqdm(mat_range)
-    for matid in mat_range:
-      texid = self.model.mat_texid[matid][0] if matid > -1 else None
-      if texid and texid > -1:
-        rgba = self.model.mat_rgba[matid]
-
-        texture_height = self.model.tex_height[texid]
-        texture_width = self.model.tex_width[texid]
-        pixels = 3 * texture_height * texture_width
-
-        image_name = utils_module.get_texture_name(texid, rgba)
-        rgba_pixels = self.model.tex_rgb[data_adrs[texid] : data_adrs[texid + 1]].reshape(
-          texture_height, texture_width, 3
-        )
-        rgba_pixels = rgba_pixels * rgba[:3]
-        rgba_pixels = rgba_pixels.astype(np.uint8)
-        img = im.fromarray(
-          rgba_pixels
-        )
-        img = ImageOps.flip(img)
-        img_path = os.path.join(self.assets_directory, image_name)
-        abs_img_path = os.path.abspath(img_path)
-        img.save(img_path)
-
-        rel_path = os.path.relpath(
-          self.assets_directory, self.frames_directory
-        )
-        rel_img_path = os.path.join(
-          rel_path, image_name
-        )
-
-        self.texture_files[image_name] = rel_img_path if self.shareable else abs_img_path
-        data_adr += pixels
+      print(
+          termcolor.colored(
+              f"Completed writing {self.model.ntex} textures to"
+              f" {self.assets_directory}",
+              "green",
+          )
+      )
 
   def _load_geom(
       self, 
