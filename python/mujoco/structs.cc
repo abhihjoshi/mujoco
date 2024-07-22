@@ -423,8 +423,9 @@ MjModelWrapper MjModelWrapper::LoadXML(
   return MjModelWrapper(model);
 }
 
-MjModelWrapper MjModelWrapper::CompileSpec(raw::MjSpec* spec) {
-  auto m = mj_compile(spec, nullptr);
+MjModelWrapper MjModelWrapper::CompileSpec(raw::MjSpec* spec,
+                                           const mjVFS* vfs) {
+  auto m = mj_compile(spec, vfs);
   if (!m || mjs_isWarning(spec)) {
     throw py::value_error(mjs_getError(spec));
   }
@@ -1382,6 +1383,30 @@ PYBIND11_MODULE(_structs, m) {
   MJOPTION_VECTORS
 #undef X
 
+  mjOption.def_property_readonly_static("_float_fields", [](py::object) {
+    std::vector<std::string> field_names;
+#define X(type, var) field_names.push_back(#var);
+    MJOPTION_FLOATS
+#undef X
+    return py::tuple(py::cast(field_names));
+  });
+
+  mjOption.def_property_readonly_static("_int_fields", [](py::object) {
+    std::vector<std::string> field_names;
+#define X(type, var) field_names.push_back(#var);
+    MJOPTION_INTS
+#undef X
+    return py::tuple(py::cast(field_names));
+  });
+
+  mjOption.def_property_readonly_static("_floatarray_fields", [](py::object) {
+    std::vector<std::string> field_names;
+#define X(var, sz) field_names.push_back(#var);
+    MJOPTION_VECTORS
+#undef X
+    return py::tuple(py::cast(field_names));
+  });
+
   // ==================== MJVISUAL =============================================
   py::class_<MjVisualWrapper> mjVisual(m, "MjVisual");
   mjVisual.def("__copy__", [](const MjVisualWrapper& other) {
@@ -1572,7 +1597,14 @@ R"(Loads an MjModel from an XML string and an optional assets dictionary.)"));
   mjModel.def_static(
       "_from_spec_ptr", [](uintptr_t addr) {
         return MjModelWrapper::CompileSpec(
-            reinterpret_cast<raw::MjSpec*>(addr));
+            reinterpret_cast<raw::MjSpec*>(addr),
+            nullptr);
+      });
+  mjModel.def_static(
+      "_from_spec_ptr", [](uintptr_t addr, uintptr_t vfs) {
+        return MjModelWrapper::CompileSpec(
+            reinterpret_cast<raw::MjSpec*>(addr),
+            reinterpret_cast<mjVFS*>(vfs));
       });
   mjModel.def_static(
       "from_xml_path", &MjModelWrapper::LoadXMLFile,
@@ -1619,6 +1651,32 @@ This is useful for example when the MJB is not available as a file on disk.)"));
       #var, [](const MjModelWrapper& m) { return m.get()->var; });
   MJMODEL_INTS
 #undef X
+
+  mjModel.def_property_readonly("_sizes", [](const MjModelWrapper& m) {
+    int nint = 0;
+#define X(var) ++nint;
+    MJMODEL_INTS
+#undef X
+    py::array_t<std::int64_t> sizes(nint);
+    {
+      int i = 0;
+      auto data = sizes.mutable_unchecked();
+#define X(var) data[i++] = m.get()->var;
+      MJMODEL_INTS
+#undef X
+    }
+    py::detail::array_proxy(sizes.ptr())->flags &=
+        ~py::detail::npy_api::NPY_ARRAY_WRITEABLE_;
+    return sizes;
+  });
+
+  mjModel.def_property_readonly_static("_size_fields", [](py::object) {
+    std::vector<std::string> fields;
+#define X(var) fields.push_back(#var);
+    MJMODEL_INTS
+#undef X
+    return py::tuple(py::cast(fields));
+  });
 
 #define X(dtype, var, dim0, dim1)                             \
   if constexpr (std::string_view(#var) != "text_data" &&      \

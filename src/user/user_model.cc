@@ -136,12 +136,6 @@ mjCModel& mjCModel::operator=(const mjCModel& other) {
     // create new default tree
     mjCDef* subtree = new mjCDef(*other.defaults_[0]);
     *this += *subtree;
-    for (const auto& [name, def] : other.def_map) {
-      std::size_t index =
-          std::find(other.defaults_.begin(), other.defaults_.end(), def) -
-          other.defaults_.begin();
-      def_map[name] = defaults_[index];
-    }
 
     // copy name maps
     for (int i=0; i<mjNOBJECT; i++) {
@@ -194,19 +188,26 @@ static void resetlist(std::vector<T*>& list) {
 
 
 
+void mjCModel::ResetTreeLists() {
+  mjCBody *world = bodies_[0];
+  resetlist(bodies_);
+  resetlist(joints_);
+  resetlist(geoms_);
+  resetlist(sites_);
+  resetlist(cameras_);
+  resetlist(lights_);
+  resetlist(frames_);
+  world->id = 0;
+  bodies_.push_back(world);
+}
+
+
+
 mjCModel& mjCModel::operator+=(const mjCModel& other) {
   // create global lists
   mjCBody *world = bodies_[0];
   if (compiled) {
-    resetlist(bodies_);
-    resetlist(joints_);
-    resetlist(geoms_);
-    resetlist(sites_);
-    resetlist(cameras_);
-    resetlist(lights_);
-    resetlist(frames_);
-    world->id = 0;
-    bodies_.push_back(world);
+    ResetTreeLists();
   }
   MakeLists(world);
   ProcessLists(/*checkrepeat=*/false);
@@ -239,15 +240,7 @@ mjCModel& mjCModel::operator+=(const mjCModel& other) {
 
   // restore to the original state
   if (!compiled) {
-    resetlist(bodies_);
-    resetlist(joints_);
-    resetlist(geoms_);
-    resetlist(sites_);
-    resetlist(cameras_);
-    resetlist(lights_);
-    resetlist(frames_);
-    world->id = 0;
-    bodies_.push_back(world);
+    ResetTreeLists();
   }
 
   PointToLocal();
@@ -297,15 +290,7 @@ mjCModel& mjCModel::operator-=(const mjCBody& subtree) {
 
   // create global lists
   if (compiled) {
-    resetlist(bodies_);
-    resetlist(joints_);
-    resetlist(geoms_);
-    resetlist(sites_);
-    resetlist(cameras_);
-    resetlist(lights_);
-    resetlist(frames_);
-    world->id = 0;
-    bodies_.push_back(world);
+    ResetTreeLists();
   }
   MakeLists(world);
   ProcessLists(/*checkrepeat=*/false);
@@ -320,15 +305,7 @@ mjCModel& mjCModel::operator-=(const mjCBody& subtree) {
 
   // restore to the original state
   if (!compiled) {
-    resetlist(bodies_);
-    resetlist(joints_);
-    resetlist(geoms_);
-    resetlist(sites_);
-    resetlist(cameras_);
-    resetlist(lights_);
-    resetlist(frames_);
-    world->id = 0;
-    bodies_.push_back(world);
+    ResetTreeLists();
   }
 
   PointToLocal();
@@ -397,6 +374,11 @@ void mjCModel::PointToLocal() {
   spec.modelname = &spec_modelname_;
   spec.meshdir = &spec_meshdir_;
   spec.texturedir = &spec_texturedir_;
+  comment = nullptr;
+  modelfiledir = nullptr;
+  modelname = nullptr;
+  meshdir = nullptr;
+  texturedir = nullptr;
 }
 
 
@@ -408,11 +390,6 @@ void mjCModel::CopyFromSpec() {
   modelname_ = spec_modelname_;
   meshdir_ = spec_meshdir_;
   texturedir_ = spec_texturedir_;
-  comment = &comment_;
-  modelfiledir = &modelfiledir_;
-  modelname = &modelname_;
-  meshdir = &meshdir_;
-  texturedir = &texturedir_;
 }
 
 
@@ -694,6 +671,13 @@ mjCBase* mjCModel::GetObject(mjtObj type, int id) {
 
 template <class T>
 static mjsElement* GetNext(std::vector<T*>& list, mjsElement* child) {
+  if (!child) {
+    if (list.empty()) {
+      return nullptr;
+    }
+    return list[0]->spec.element;
+  }
+
   // TODO: use id for direct indexing instead of a loop
   for (unsigned int i = 0; i < list.size()-1; i++) {
     if (list[i]->spec.element == child) {
@@ -719,37 +703,37 @@ mjsElement* mjCModel::NextObject(mjsElement* object, mjtObj type) {
 
   switch (type) {
     case mjOBJ_ACTUATOR:
-      return object ? GetNext(actuators_, object) : actuators_[0];
+      return GetNext(actuators_, object);
     case mjOBJ_SENSOR:
-      return object ? GetNext(sensors_, object) : sensors_[0];
+      return GetNext(sensors_, object);
     case mjOBJ_FLEX:
-      return object ? GetNext(flexes_, object) : flexes_[0];
+      return GetNext(flexes_, object);
     case mjOBJ_PAIR:
-      return object ? GetNext(pairs_, object) : pairs_[0];
+      return GetNext(pairs_, object);
     case mjOBJ_EXCLUDE:
-      return object ? GetNext(excludes_, object) : excludes_[0];
+      return GetNext(excludes_, object);
     case mjOBJ_EQUALITY:
-      return object ? GetNext(equalities_, object) : equalities_[0];
+      return GetNext(equalities_, object);
     case mjOBJ_TENDON:
-      return object ? GetNext(tendons_, object) : tendons_[0];
+      return GetNext(tendons_, object);
     case mjOBJ_NUMERIC:
-      return object ? GetNext(numerics_, object) : numerics_[0];
+      return GetNext(numerics_, object);
     case mjOBJ_TEXT:
-      return object ? GetNext(texts_, object) : texts_[0];
+      return GetNext(texts_, object);
     case mjOBJ_TUPLE:
-      return object ? GetNext(tuples_, object) : tuples_[0];
+      return GetNext(tuples_, object);
     case mjOBJ_KEY:
-      return object ? GetNext(keys_, object) : keys_[0];
+      return GetNext(keys_, object);
     case mjOBJ_MESH:
-      return object ? GetNext(meshes_, object) : meshes_[0];
+      return GetNext(meshes_, object);
     case mjOBJ_HFIELD:
-      return object ? GetNext(hfields_, object) : hfields_[0];
+      return GetNext(hfields_, object);
     case mjOBJ_SKIN:
-      return object ? GetNext(skins_, object) : skins_[0];
+      return GetNext(skins_, object);
     case mjOBJ_TEXTURE:
-      return object ? GetNext(textures_, object) : textures_[0];
+      return GetNext(textures_, object);
     case mjOBJ_MATERIAL:
-      return object ? GetNext(materials_, object) : materials_[0];
+      return GetNext(materials_, object);
     default:
       return nullptr;
   }
@@ -2521,9 +2505,10 @@ void mjCModel::CopyObjects(mjModel* m) {
     m->tex_height[i] = ptex->height;
     m->tex_width[i] = ptex->width;
     m->tex_adr[i] = data_adr;
+    m->tex_nchannel[i] = 3;
 
     // copy rgb data
-    memcpy(m->tex_rgb + data_adr, ptex->rgb.data(), 3*ptex->width*ptex->height);
+    memcpy(m->tex_data + data_adr, ptex->rgb.data(), 3*ptex->width*ptex->height);
 
     // advance counter
     data_adr += 3*ptex->width*ptex->height;
@@ -2535,10 +2520,10 @@ void mjCModel::CopyObjects(mjModel* m) {
     mjCMaterial* pmat = materials_[i];
 
     // set fields
-    m->mat_texid[mjNTEXMAT*i] = pmat->texid;
-    for (int j=1; j<mjNTEXMAT; j++) {
-      m->mat_texid[mjNTEXMAT*i+j] = -1;
+    for (int j=0; j<mjNTEXROLE; j++) {
+      m->mat_texid[mjNTEXROLE*i+j] = -1;
     }
+    m->mat_texid[mjNTEXROLE*i+mjTEXROLE_RGB] = pmat->texid;
     m->mat_texuniform[i] = pmat->texuniform;
     mjuu_copyvec(m->mat_texrepeat+2*i, pmat->texrepeat, 2);
     m->mat_emission[i] = pmat->emission;
@@ -2776,68 +2761,73 @@ void mjCModel::CopyObjects(mjModel* m) {
 
 
 // save the current state
-void mjCModel::SaveState(const mjData* d) {
+void mjCModel::SaveState(const mjtNum* qpos, const mjtNum* qvel, const mjtNum* act) {
   for (auto joint : joints_) {
     switch (joint->type) {
       case mjJNT_FREE:
-        mjuu_copyvec(joint->qpos, d->qpos + joint->qposadr_, 7);
-        mjuu_copyvec(joint->qvel, d->qvel + joint->dofadr_, 6);
+        if (qpos) mjuu_copyvec(joint->qpos, qpos + joint->qposadr_, 7);
+        if (qvel) mjuu_copyvec(joint->qvel, qvel + joint->dofadr_, 6);
         break;
       case mjJNT_BALL:
-        mjuu_copyvec(joint->qpos, d->qpos + joint->qposadr_, 4);
-        mjuu_copyvec(joint->qvel, d->qvel + joint->dofadr_, 3);
+        if (qpos) mjuu_copyvec(joint->qpos, qpos + joint->qposadr_, 4);
+        if (qvel) mjuu_copyvec(joint->qvel, qvel + joint->dofadr_, 3);
         break;
       case mjJNT_HINGE:
       case mjJNT_SLIDE:
-        mjuu_copyvec(joint->qpos, d->qpos + joint->qposadr_, 1);
-        mjuu_copyvec(joint->qvel, d->qvel + joint->dofadr_, 1);
+        if (qpos) mjuu_copyvec(joint->qpos, qpos + joint->qposadr_, 1);
+        if (qvel) mjuu_copyvec(joint->qvel, qvel + joint->dofadr_, 1);
         break;
     }
   }
 
   for (auto actuator : actuators_) {
-    if (actuator->actadr_ != -1) {
+    if (actuator->actadr_ != -1 && act) {
       actuator->act.assign(actuator->actnum_, 0);
-      mjuu_copyvec(actuator->act.data(), d->act + actuator->actadr_, actuator->actnum_);
+      mjuu_copyvec(actuator->act.data(), act + actuator->actadr_, actuator->actnum_);
     }
   }
 }
 
 
 
-// restore the previous state
-void mjCModel::RestoreState(const mjModel* m, mjData** dest) {
+// clear existing data
+void mjCModel::MakeData(const mjModel* m, mjData** dest) {
   mj_makeRawData(dest, m);
   mjData* d = *dest;
   if (d) {
     mj_initPlugin(m, d);
     mj_resetData(m, d);
   }
+}
 
+
+
+// restore the previous state
+void mjCModel::RestoreState(mjtNum* qpos, mjtNum* qvel, mjtNum* act) {
   for (auto joint : joints_) {
     if (!mjuu_defined(joint->qpos[0]) || !mjuu_defined(joint->qvel[0])) {
       continue;
     }
     switch (joint->type) {
       case mjJNT_FREE:
-        mjuu_copyvec(d->qpos + joint->qposadr_, joint->qpos, 7);
-        mjuu_copyvec(d->qvel + joint->dofadr_, joint->qvel, 6);
+        if (qpos) mjuu_copyvec(qpos + joint->qposadr_, joint->qpos, 7);
+        if (qvel) mjuu_copyvec(qvel + joint->dofadr_, joint->qvel, 6);
         break;
       case mjJNT_BALL:
-        mjuu_copyvec(d->qpos + joint->qposadr_, joint->qpos, 4);
-        mjuu_copyvec(d->qvel + joint->dofadr_, joint->qvel, 3);
+        if (qpos) mjuu_copyvec(qpos + joint->qposadr_, joint->qpos, 4);
+        if (qvel) mjuu_copyvec(qvel + joint->dofadr_, joint->qvel, 3);
         break;
       case mjJNT_HINGE:
       case mjJNT_SLIDE:
-        mjuu_copyvec(d->qpos + joint->qposadr_, joint->qpos, 1);
-        mjuu_copyvec(d->qvel + joint->dofadr_, joint->qvel, 1);
+        if (qpos) mjuu_copyvec(qpos + joint->qposadr_, joint->qpos, 1);
+        if (qvel) mjuu_copyvec(qvel + joint->dofadr_, joint->qvel, 1);
         break;
     }
   }
 
   for (auto actuator : actuators_) {
-    if (mjuu_defined(actuator->act[0])) {
-      mjuu_copyvec(d->act + actuator->actadr_, actuator->act.data(), actuator->actnum_);
+    if (mjuu_defined(actuator->act[0]) && act) {
+      mjuu_copyvec(act + actuator->actadr_, actuator->act.data(), actuator->actnum_);
     }
   }
 }

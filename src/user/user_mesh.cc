@@ -62,12 +62,15 @@
 #include "user/user_objects.h"
 #include "user/user_resource.h"
 #include "user/user_util.h"
-#include "xml/xml_util.h"
 #include <tiny_obj_loader.h>
 
 extern "C" {
 #include "qhull_ra.h"
 }
+
+namespace {
+  using mujoco::user::VectorToString;
+}  // namespace
 
 // compute triangle area, surface normal, center
 static double _triangle(double* normal, double* center,
@@ -202,6 +205,13 @@ void mjCMesh::PointToLocal() {
   spec.plugin.name = &plugin_name;
   spec.plugin.instance_name = &plugin_instance_name;
   spec.info = &info;
+  file = nullptr;
+  content_type = nullptr;
+  uservert = nullptr;
+  usernormal = nullptr;
+  userface = nullptr;
+  usertexcoord = nullptr;
+  userfacetexcoord = nullptr;
 }
 
 
@@ -215,14 +225,7 @@ void mjCMesh::CopyFromSpec() {
   face_ = spec_face_;
   texcoord_ = spec_texcoord_;
   facetexcoord_ = spec_facetexcoord_;
-  file = &file_;
-  content_type = &content_type_;
   maxhullvert_ = spec.maxhullvert;
-  uservert = &vert_;
-  usernormal = &normal_;
-  userface = &face_;
-  usertexcoord = &texcoord_;
-  userfacetexcoord = &facetexcoord_;
   plugin.active = spec.plugin.active;
   plugin.instance = spec.plugin.instance;
   plugin.name = spec.plugin.name;
@@ -1993,6 +1996,16 @@ void mjCSkin::PointToLocal() {
   spec.vertid = &spec_vertid_;
   spec.vertweight = &spec_vertweight_;
   spec.info = &info;
+  file = nullptr;
+  material = nullptr;
+  vert = nullptr;
+  texcoord = nullptr;
+  face = nullptr;
+  bodyname = nullptr;
+  bindpos = nullptr;
+  bindquat = nullptr;
+  vertid = nullptr;
+  vertweight = nullptr;
 }
 
 
@@ -2017,16 +2030,6 @@ void mjCSkin::CopyFromSpec() {
   bindquat_ = spec_bindquat_;
   vertid_ = spec_vertid_;
   vertweight_ = spec_vertweight_;
-  file = &spec_file_;
-  material = &spec_material_;
-  vert = &spec_vert_;
-  texcoord = &spec_texcoord_;
-  face = &spec_face_;
-  bodyname = &spec_bodyname_;
-  bindpos = &spec_bindpos_;
-  bindquat = &spec_bindquat_;
-  vertid = &spec_vertid_;
-  vertweight = &spec_vertweight_;
 }
 
 
@@ -2399,6 +2402,11 @@ void mjCFlex::PointToLocal() {
   spec.texcoord = &spec_texcoord_;
   spec.elem = &spec_elem_;
   spec.info = &info;
+  material = nullptr;
+  vertbody = nullptr;
+  vert = nullptr;
+  texcoord = nullptr;
+  elem = nullptr;
 }
 
 
@@ -2419,11 +2427,6 @@ void mjCFlex::CopyFromSpec() {
   vert_ = spec_vert_;
   texcoord_ = spec_texcoord_;
   elem_ = spec_elem_;
-  material = &material_;
-  vertbody = &vertbody_;
-  vert = &vert_;
-  texcoord = &texcoord_;
-  elem = &elem_;
 
   // clear precompiled asset. TODO: use asset cache
   nedge = 0;
@@ -2627,8 +2630,8 @@ void mjCFlex::Compile(const mjVFS* vfs) {
 
   // add plugins
   std::string userface, useredge;
-  mjXUtil::Vector2String(userface, elem_);
-  mjXUtil::Vector2String(useredge, edgeidx);
+  userface = VectorToString(elem_);
+  useredge = VectorToString(edgeidx);
 
   for (const auto& vbodyid : vertbodyid) {
     if (model->Bodies()[vbodyid]->plugin.instance) {

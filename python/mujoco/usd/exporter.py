@@ -284,11 +284,11 @@ class USDExporter:
     geom_name = self._get_geom_name(geom)
     assert geom_name not in self.geom_names
 
-    texid = self.model.mat_texid[geom.matid][0] if geom.matid != -1 else None
-    rgba = self.model.mat_rgba[geom.matid] if geom.matid != -1 else -1
-
-    # TODO: geom.rgba is different from material rgba
-    texture_file = self.texture_files[utils_module.get_texture_name(texid, rgba)] if texid and texid != -1 else None
+    geom_textures = (
+      [(self.texture_files[i], self.model.tex_type[i]) if i != -1 else None for i in self.model.mat_texid[geom.matid]]
+      if geom.matid != -1
+      else None
+    )
 
     # handling meshes in our scene
     if geom.type == mujoco.mjtGeom.mjGEOM_MESH:
@@ -299,7 +299,7 @@ class USDExporter:
           obj_name=geom_name,
           dataid=self.model.geom_dataid[geom.objid],
           rgba=geom.rgba,
-          texture_file=texture_file,
+          geom_textures=geom_textures,
       )
     else:
       # handling tendons in our scene
@@ -313,10 +313,11 @@ class USDExporter:
         usd_geom = object_module.USDTendon(
             mesh_config=mesh_config,
             stage=self.stage,
+            model=self.model,
             geom=geom,
             obj_name=geom_name,
             rgba=geom.rgba,
-            texture_file=texture_file,
+            geom_textures=geom_textures,
         )
       # handling primitives in our scene
       else:
@@ -328,10 +329,11 @@ class USDExporter:
         usd_geom = object_module.USDPrimitiveMesh(
             mesh_config=mesh_config,
             stage=self.stage,
+            model=self.model,
             geom=geom,
             obj_name=geom_name,
             rgba=geom.rgba,
-            texture_file=texture_file,
+            geom_textures=geom_textures,
         )
 
     self.geom_names.add(geom_name)

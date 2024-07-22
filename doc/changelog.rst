@@ -5,6 +5,24 @@ Changelog
 Upcoming version (not yet released)
 -----------------------------------
 
+General
+^^^^^^^
+
+1. Renamed ``mjModel.tex_rbg`` to ``mjModel.tex_data``.
+
+MJX
+^^^
+
+2. Added more fields to ``mjx.Model`` and ``mjx.Data`` for further compatibility with the corresponding MuJoCo structs.
+
+Python bindings
+^^^^^^^^^^^^^^^
+2. Added support for asset dictionary argument in ``mujoco.spec.from_file``, ``mujoco.spec.from_string`` and
+   ``mujoco.spec.compile``.
+
+Version 3.2.0 (Jul 15, 2024)
+----------------------------
+
 New features
 ^^^^^^^^^^^^
 
@@ -87,6 +105,7 @@ Bug fixes
 ^^^^^^^^^
 22. Fix an issue where ``mj_copyData`` (or ``copy.copy()`` in the Python bindings) was not copying contact information
     correctly (:github:issue:`1710`).
+23. Fix an issue with saving to XML that caused frames to be written multiple times (:github:issue:`1802`).
 
 Version 3.1.6 (Jun 3, 2024)
 ---------------------------
