@@ -464,7 +464,7 @@ class USDExporter:
       new_light = light_module.USDDomeLight(
           stage=self.stage, light_name=light_name)
 
-      new_light.update(intensity=intensity, color=color, frame=0)
+      new_light.update(intensity=intensity, color=color)
 
   def add_camera(
       self,

@@ -191,7 +191,7 @@ class USDObject(abc.ABC):
     transformation_mat = utils_module.create_transform_matrix(
         rotation_matrix=mat, translation_vector=pos
     ).T
-    self.transform_op.Set(Gf.Matrix4d(transformation_mat.tolist()), frame)
+    self.transform_op.Set(Gf.Matrix4d(transformation_mat.tolist()))
 
     if visible and frame - self.last_visible_frame > 1:
       # non consecutive visible frames

@@ -52,4 +52,4 @@ class USDCamera:
     transformation_mat = utils_module.create_transform_matrix(
         rotation_matrix=cam_mat, translation_vector=cam_pos
     ).T
-    self.transform_op.Set(Gf.Matrix4d(transformation_mat.tolist()), frame)
+    self.transform_op.Set(Gf.Matrix4d(transformation_mat.tolist()))
