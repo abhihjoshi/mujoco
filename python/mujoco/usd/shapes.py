@@ -264,7 +264,7 @@ class TriangleMesh:
   def scale(self, scale: np.ndarray) -> None:
     self.vertices = self.vertices * scale
 
-  def get_center(self):
+  def get_center(self) -> np.ndarray:
     center = np.mean(self.vertices, axis=0)
     return center
 

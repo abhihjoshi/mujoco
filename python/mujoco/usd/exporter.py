@@ -18,13 +18,12 @@ import os
 from typing import List, Optional
 
 import mujoco
+import mujoco.usd.assets as assets_module
 import mujoco.usd.camera as camera_module
 import mujoco.usd.lights as light_module
 import mujoco.usd.objects as object_module
 import mujoco.usd.shapes as shapes_module
 import numpy as np
-from PIL import Image as im
-from PIL import ImageOps
 import scipy
 import termcolor
 
@@ -123,7 +122,7 @@ class USDExporter:
     self._initialize_output_directories()
 
     # loading required textures for the scene
-    self._load_textures()
+    self._load_assets()
 
   @property
   def usd(self):
@@ -173,6 +172,41 @@ class USDExporter:
           )
       )
 
+  def _load_assets(self):
+    """Load assets including textures and materials."""
+
+    # load all textures in the model
+    self.textures = {}
+    for texid in range(self.model.ntex):
+      self.textures[texid] = assets_module.Texture(texid,
+                                                   self.model,
+                                                   self.frames_directory,
+                                                   self.assets_directory)
+    # setting default value for no corresponding texture map
+    self.textures[-1] = None
+
+    # load all materials in the model
+    self.materials = {}
+    for matid in range(self.model.nmat):
+      # list of texture maps associated with the material
+      texids = self.model.mat_texid[matid]
+      mat_textures = [self.textures[texid] for texid in texids]
+      self.materials[matid] = assets_module.Material(matid,
+                                                     self.model,
+                                                     mat_textures)
+
+    # setting default value for no material
+    self.materials[-1] = None
+
+    if self.verbose:
+      print(
+          termcolor.colored(
+              f"Completed writing {self.model.ntex} textures to"
+              f" {self.assets_directory}",
+              "green",
+          )
+      )
+
   def update_scene(
       self,
       data: mujoco.MjData,
@@ -203,59 +237,19 @@ class USDExporter:
 
     self.updates += 1
 
-  def _load_textures(self):
-    """Load textures."""
-    data_adr = 0
-    self.texture_files = []
-    for texture_id in range(self.model.ntex):
-      texture_height = self.model.tex_height[texture_id]
-      texture_width = self.model.tex_width[texture_id]
-      texture_nchannel = self.model.tex_nchannel[texture_id]
-      pixels = texture_nchannel * texture_height * texture_width
-      img = im.fromarray(
-          self.model.tex_data[data_adr : data_adr + pixels].reshape(
-              texture_height, texture_width, 3
-          )
-      )
-      img = ImageOps.flip(img)
-
-      texture_file_name = f"texture_{texture_id}.png"
-
-      img.save(os.path.join(self.assets_directory, texture_file_name))
-
-      relative_path = os.path.relpath(
-          self.assets_directory, self.frames_directory
-      )
-      img_path = os.path.join(
-          relative_path, texture_file_name
-      )
-
-      self.texture_files.append(img_path)
-
-      data_adr += pixels
-
-    if self.verbose:
-      print(
-          termcolor.colored(
-              f"Completed writing {self.model.ntex} textures to"
-              f" {self.assets_directory}",
-              "green",
-          )
-      )
-
   def _load_geom(self, geom: mujoco.MjvGeom):
     """Loads a geom into the USD scene."""
     geom_name = self._get_geom_name(geom)
 
     assert geom_name not in self.geom_names
 
-    if geom.matid == -1:
-      geom_textures = []
-    else:
-      geom_textures = [
-          (self.texture_files[i], self.model.tex_type[i]) if i != -1 else None
-          for i in self.model.mat_texid[geom.matid]
-      ]
+    # if geom.matid == -1:
+    #   geom_textures = []
+    # else:
+    #   geom_textures = [
+    #       (self.texture_files[i], self.model.tex_type[i]) if i != -1 else None
+    #       for i in self.model.mat_texid[geom.matid]
+    #   ]
 
     # handling meshes in our scene
     if geom.type == mujoco.mjtGeom.mjGEOM_MESH:
@@ -266,7 +260,7 @@ class USDExporter:
           obj_name=geom_name,
           dataid=self.model.geom_dataid[geom.objid],
           rgba=geom.rgba,
-          geom_textures=geom_textures,
+          material=self.materials[geom.matid],
       )
     else:
       # handling tendons in our scene
@@ -284,7 +278,7 @@ class USDExporter:
             geom=geom,
             obj_name=geom_name,
             rgba=geom.rgba,
-            geom_textures=geom_textures,
+            material=self.materials[geom.matid],
         )
       # handling primitives in our scene
       else:
@@ -300,7 +294,7 @@ class USDExporter:
             geom=geom,
             obj_name=geom_name,
             rgba=geom.rgba,
-            geom_textures=geom_textures,
+            material=self.materials[geom.matid],
         )
 
     self.geom_names.add(geom_name)
