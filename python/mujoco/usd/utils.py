@@ -15,6 +15,12 @@
 """Utility functions for USD exporter."""
 import numpy as np
 
+def set_attr(attr, value, frame) -> None:
+  if frame is None:
+    attr.Set(value)
+  else:
+    attr.Set(value, frame)
+
 def get_texture_name(texid, rgba) -> str:
   # returns a name for image to store
   res = f"texid{str(texid)}"

@@ -183,7 +183,7 @@ class USDObject(abc.ABC):
       pos: np.ndarray,
       mat: np.ndarray,
       visible: bool,
-      frame: int,
+      frame: Optional[int] = None,
       scale: Optional[np.ndarray] = None,
   ):
     """Updates the position and orientation of an object
@@ -192,27 +192,43 @@ class USDObject(abc.ABC):
     transformation_mat = utils_module.create_transform_matrix(
         rotation_matrix=mat, translation_vector=pos
     ).T
-    self.transform_op.Set(Gf.Matrix4d(transformation_mat.tolist()))
+    utils_module.set_attr(attr=self.transform_op,
+                          value=Gf.Matrix4d(transformation_mat.tolist()),
+                          frame=frame)
 
-    if visible and frame - self.last_visible_frame > 1:
-      # non consecutive visible frames
-      self.update_visibility(False, max(0, self.last_visible_frame))
-      self.update_visibility(True, frame)
+    # TODO (ajoshi): update visibility in online case
+    if frame is not None:
+      if visible and frame - self.last_visible_frame > 1:
+        # non consecutive visible frames
+        self.update_visibility(False, max(0, self.last_visible_frame))
+        self.update_visibility(True, frame)
 
-    if visible:
-      self.last_visible_frame = frame
+      if visible:
+        self.last_visible_frame = frame
 
     if scale is not None:
       self.update_scale(scale, frame)
 
-  def update_visibility(self, visible: bool, frame: int):
+  def update_visibility(
+      self,
+      visible: bool,
+      frame: Optional[int] = None
+    ):
     """Updates the visibility of an object in a scene for a given frame."""
     visibility_setting = "inherited" if visible else "invisible"
-    self.usd_xform.GetVisibilityAttr().Set(visibility_setting, frame)
+    utils_module.set_attr(attr=self.usd_xform.GetVisibilityAttr(),
+                          value=visibility_setting,
+                          frame=frame)
 
-  def update_scale(self, scale: np.ndarray, frame: int):
+  def update_scale(
+      self,
+      scale: np.ndarray,
+      frame: Optional[int] = None
+    ):
     """Updates the scale of an object in the scene for a given frame."""
-    self.scale_op.Set(Gf.Vec3f(scale.tolist()), frame)
+    utils_module.set_attr(attr=self.scale_op,
+                          value=Gf.Vec3f(scale.tolist()),
+                          frame=frame)
 
 
 class USDMesh(USDObject):
@@ -512,7 +528,7 @@ class USDTendon(USDObject):
       pos: np.ndarray,
       mat: np.ndarray,
       visible: bool,
-      frame: int,
+      frame: Optional[int] = None,
       scale: Optional[np.ndarray] = None,
   ):
     """Updates the position and orientation of an object in the scene."""
@@ -520,17 +536,29 @@ class USDTendon(USDObject):
     for name in self.tendon_parts:
       if "left" in name:
         translate = [0, 0, -scale[2] - (scale[0] / 2)]
-        self.usd_refs[name]["translate_op"].Set(Gf.Vec3f(translate), frame)
+        utils_module.set_attr(attr=self.usd_refs[name]["translate_op"],
+                              value=Gf.Vec3f(translate),
+                              frame=frame)
       elif "right" in name:
         translate = [0, 0, scale[2] + (scale[0] / 2)]
-        self.usd_refs[name]["translate_op"].Set(Gf.Vec3f(translate), frame)
+        utils_module.set_attr(attr=self.usd_refs[name]["translate_op"],
+                              value=Gf.Vec3f(translate),
+                              frame=frame)
 
-  def update_scale(self, scale: np.ndarray, frame: int):
+  def update_scale(
+      self,
+      scale: np.ndarray,
+      frame: Optional[int]
+  ):
     """Updates the scale of the tendon."""
     for name in self.tendon_parts:
       if "cylinder" in name:
-        self.usd_refs[name]["scale_op"].Set(Gf.Vec3f(scale.tolist()), frame)
+        utils_module.set_attr(attr=self.usd_refs[name]["scale_op"],
+                              value=Gf.Vec3f(scale.tolist()),
+                              frame=frame)
       else:
         hemisphere_scale = scale.tolist()
         hemisphere_scale[2] = hemisphere_scale[0]
-        self.usd_refs[name]["scale_op"].Set(Gf.Vec3f(hemisphere_scale), frame)
+        utils_module.set_attr(attr=self.usd_refs[name]["scale_op"],
+                              value=Gf.Vec3f(hemisphere_scale),
+                              frame=frame)

@@ -47,8 +47,9 @@ class USDExporter:
       output_directory_name: str = "mujoco_usdpkg",
       output_directory_root: str = "./",
       light_intensity: int = 10000,
-      shareable: bool = False,
       framerate: int = 60,
+      shareable: bool = False,
+      online: bool = False,
       camera_names: Optional[List[str]] = None,
       stage: Optional[pxr.Usd.Stage] = None,
       verbose: bool = True,
@@ -68,6 +69,9 @@ class USDExporter:
         light_intensity: default intensity of the lights in the external renderer.
         shareable: use relative paths to assets instead of absolute paths to allow
           files to be shared across users.
+        online: set to true if using USD exporter for online rendering. This value
+          is set to true when rendering with Isaac Sim. If online is set to true,
+          shareable must be false.
         framerate: framerate of the exported scene when rendered
         camera_names: list of fixed cameras defined in the mujoco model to render.
         stage: predefined stage to add objects in the scene to.
@@ -79,11 +83,18 @@ class USDExporter:
     self.output_directory_name = output_directory_name
     self.output_directory_root = output_directory_root
     self.light_intensity = light_intensity
-    self.shareable = shareable
     self.framerate = framerate
+    self.shareable = shareable
+    self.online = online
     self.camera_names = camera_names
     self.stage = stage
     self.verbose = verbose
+
+    if online and shareable:
+      raise ValueError(f"""
+Arguments online and shareable cannot both be set to true. If rendering online,
+please set shareable to be false.    
+""")
 
     self.frame_count = 0  # maintains how many times we have saved the scene
     self.updates = 0
@@ -165,7 +176,8 @@ class USDExporter:
       self.textures[texid] = assets_module.Texture(texid,
                                                    self.model,
                                                    self.frames_directory,
-                                                   self.assets_directory)
+                                                   self.assets_directory,
+                                                   self.shareable)
     # setting default value for no corresponding texture map
     self.textures[-1] = None
 
@@ -340,14 +352,14 @@ class USDExporter:
             mat=geom.mat,
             scale=tendon_scale,
             visible=geom.rgba[3] > 0,
-            frame=self.updates,
+            frame=self.updates if not self.online else None,
         )
       else:
         self.geom_refs[geom_name].update(
             pos=geom.pos,
             mat=geom.mat,
             visible=geom.rgba[3] > 0,
-            frame=self.updates,
+            frame=self.updates if not self.online else None,
         )
 
   def _load_lights(self) -> None:

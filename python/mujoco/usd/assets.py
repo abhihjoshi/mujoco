@@ -29,11 +29,13 @@ class Texture:
       model: mujoco.MjModel,
       frames_directory: str,
       assets_directory: str,
+      shareable: bool
   ) -> None:
     self.texid = texid
     self.model = model
     self.frames_directory = frames_directory
     self.assets_directory = assets_directory
+    self.shareable = shareable
 
     self.create_texture_asset_file()
 
@@ -61,14 +63,19 @@ class Texture:
     texture_file_name = f"texture_{self.texid}.png"
 
     # saves texture asset to the specified assets directory
-    img.save(os.path.join(self.assets_directory, texture_file_name))
+    texture_path = os.path.join(self.assets_directory, texture_file_name)
+    img.save(texture_path)
 
     relative_path = os.path.relpath(
         self.assets_directory, self.frames_directory
     )
-    self.img_path = os.path.join(
+    
+    if self.shareable:
+      self.img_path = os.path.join(
         relative_path, texture_file_name
     )
+    else:
+      self.img_path = os.path.abspath(texture_path)
 
 class Material:
   """Wrapper class for materials defined in mjModel."""
