@@ -54,8 +54,8 @@ public const bool THIRD_PARTY_MUJOCO_INCLUDE_MJPLUGIN_H_ = true;
 public const bool mjEXTERNC = true;
 public const bool THIRD_PARTY_MUJOCO_MJRENDER_H_ = true;
 public const int mjNAUX = 10;
-public const int mjMAXTEXTURE = 100;
-public const int mjMAXMATERIAL = 100;
+public const int mjMAXTEXTURE = 1000;
+public const int mjMAXMATERIAL = 1000;
 public const bool THIRD_PARTY_MUJOCO_INCLUDE_MJSPEC_H_ = true;
 public const bool THIRD_PARTY_MUJOCO_INCLUDE_MJTHREAD_H_ = true;
 public const int mjMAXTHREAD = 128;
@@ -108,7 +108,7 @@ public const int mjMAXLINEPNT = 1000;
 public const int mjMAXPLANEGRID = 200;
 public const bool THIRD_PARTY_MUJOCO_MJXMACRO_H_ = true;
 public const bool THIRD_PARTY_MUJOCO_MUJOCO_H_ = true;
-public const int mjVERSION_HEADER = 320;
+public const int mjVERSION_HEADER = 323;
 
 
 // ------------------------------------Enums------------------------------------
@@ -167,7 +167,8 @@ public enum mjtEnableBit : int{
   mjENBL_INVDISCRETE = 8,
   mjENBL_MULTICCD = 16,
   mjENBL_ISLAND = 32,
-  mjNENABLE = 6,
+  mjENBL_NATIVECCD = 64,
+  mjNENABLE = 7,
 }
 public enum mjtJoint : int{
   mjJNT_FREE = 0,
@@ -5644,12 +5645,12 @@ public unsafe struct mjrContext_ {
   public fixed uint auxFBO_r[10];
   public fixed uint auxColor[10];
   public fixed uint auxColor_r[10];
-  public fixed int mat_texid[1000];
-  public fixed int mat_texuniform[100];
-  public fixed int mat_texrepeat[200];
+  public fixed int mat_texid[10000];
+  public fixed int mat_texuniform[1000];
+  public fixed int mat_texrepeat[2000];
   public int ntexture;
-  public fixed int textureType[100];
-  public fixed uint texture[100];
+  public fixed int textureType[1000];
+  public fixed uint texture[1000];
   public uint basePlane;
   public uint baseMesh;
   public uint baseHField;

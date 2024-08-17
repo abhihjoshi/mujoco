@@ -7,29 +7,71 @@ Upcoming version (not yet released)
 
 General
 ^^^^^^^
-1. Renamed ``mjModel.tex_rbg`` to ``mjModel.tex_data``.
+1. Added the :ref:`nativeccd<option-flag-nativeccd>` flag. When this flag is enabled, general convex collision
+   detection is handled natively, as opposed to using `libccd <https://github.com/danfis/libccd>`__. This feature is in
+   early stages of testing.
+2. Added :ref:`mjSpec` option for creating a texture from a buffer.
+3. :ref:`shellinertia <body-geom-shellinertia>` is now supported by all geom types.
+4. Added support for :ref:`attaching<meAttachment>` keyframes.
+
+MJX
+^^^
+5. Added ``efc_pos`` to ``mjx.Data`` (:github:issue:`1388`).
+6. Added position-dependent sensors: ``MAGNETOMETER``, ``JOINTPOS``, ``ACTUATORPOS``, ``BALLQUAT``, ``FRAMEPOS``,
+   ``FRAMEXAXIS``, ``FRAMEYAXIS``, ``FRAMEZAXIS``, ``SUBTREECOM``, ``CLOCK``.
+7. Changed default policy to avoid placing unused (MuJoCo-only) arrays on device.
+8. Added ``device`` parameter to ``mjx.make_data`` to bring it to parity with ``mjx.put_model`` and ``mjx.put_data``.
+
+Bug fixes
+^^^^^^^^^
+9.  Fixed a performance regression introduced in 3.1.7 in mesh Bounding Volume Hierarchies (:github:issue:`1875`,
+    contribution by :github:user:`michael-ahn`).
+10. Fixed a bug wherein, for models that have both muscles and stateless actuators and used one of the implicit
+    integrators, wrong derivatives would be computed.
+
+Python bindings
+^^^^^^^^^^^^^^^
+11. Added support for engine plugins in :ref:`mjSpec` (:github:issue:`1903`).
+
+
+Version 3.2.2 (Aug 8, 2024)
+---------------------------
+
+General
+^^^^^^^
+1. Increase texture and material limit back to 1000. 3.2.0 inadvertently reduced this limit to 100, breaking some
+   existing models (:github:issue:`1877`).
+
+Version 3.2.1 (Aug 5, 2024)
+---------------------------
+
+General
+^^^^^^^
+1. Renamed ``mjModel.tex_rgb`` to ``mjModel.tex_data``.
 2. Added a new :ref:`autoreset<option-flag-autoreset>` flag to disable automatic reset when NaNs or infinities are
    detected.
 3. Added sub-elements to the MJCF :ref:`material<asset-material>` element, to allow specification of multiple textures
    for rendering (e.g., :ref:`occlusion-roughness-metallic<material-orm>`). Note that the MuJoCo renderer doesn't
    support these new features, and they are made available for use with external renderers.
+4. Sorting (``mjQUICKSORT``) now calls ``std::sort`` when building with C++ (:github:issue:`1638`).
 
 MJX
 ^^^
-4. Added more fields to ``mjx.Model`` and ``mjx.Data`` for further compatibility with the corresponding MuJoCo structs.
-5. Added support for :ref:`fixed tendons <tendon-fixed>`.
-6. Added support for tendon length limits (``mjCNSTR_LIMIT_TENDON`` in :ref:`mjtConstraint`).
-7. Added support for tendon equality constraints (``mjEQ_TENDON`` in :ref:`mjtEq`).
-8. Added support for tendon actuator transmission (``mjTRN_TENDON`` in :ref:`mjtTrn`).
+5. Added more fields to ``mjx.Model`` and ``mjx.Data`` for further compatibility with the corresponding MuJoCo structs.
+6. Added support for :ref:`fixed tendons <tendon-fixed>`.
+7. Added support for tendon length limits (``mjCNSTR_LIMIT_TENDON`` in :ref:`mjtConstraint`).
+8. Added support for tendon equality constraints (``mjEQ_TENDON`` in :ref:`mjtEq`).
+9. Added support for tendon actuator transmission (``mjTRN_TENDON`` in :ref:`mjtTrn`).
 
 Python bindings
 ^^^^^^^^^^^^^^^
-9. Added support for asset dictionary argument in ``mujoco.spec.from_file``, ``mujoco.spec.from_string`` and
-   ``mujoco.spec.compile``.
+10. Added support for asset dictionary argument in ``mujoco.spec.from_file``, ``mujoco.spec.from_string`` and
+    ``mujoco.spec.compile``.
+
 
 Bug fixes
 ^^^^^^^^^
-10. Fixed a bug where implicit integrators did not take into account disabled actuators (:github:issue:`1838`).
+11. Fixed a bug where implicit integrators did not take into account disabled actuators (:github:issue:`1838`).
 
 Version 3.2.0 (Jul 15, 2024)
 ----------------------------
@@ -453,15 +495,15 @@ MJX
         - CG
         - Newton
         - Speedup
-      * - `Humanoid <https://github.com/google-deepmind/mujoco/tree/main/mjx/mujoco/mjx/benchmark/model/humanoid>`__
+      * - `Humanoid <https://github.com/google-deepmind/mujoco/tree/56006355b29424658b56aedb48a4269bd4361c68/mjx/mujoco/mjx/benchmark/model/humanoid>`__
         - 640,000
         - 1,020,000
         - **1.6 x**
-      * - `Barkour v0 <https://github.com/google-deepmind/mujoco/tree/main/mjx/mujoco/mjx/benchmark/model/barkour_v0>`__
+      * - `Barkour v0 <https://github.com/google-deepmind/mujoco/tree/56006355b29424658b56aedb48a4269bd4361c68/mjx/mujoco/mjx/benchmark/model/barkour_v0>`__
         - 1,290,000
         - 1,750,000
         - **1.35 x**
-      * - `Shadow Hand <https://github.com/google-deepmind/mujoco/tree/main/mjx/mujoco/mjx/benchmark/model/shadow_hand>`__
+      * - `Shadow Hand <https://github.com/google-deepmind/mujoco/tree/56006355b29424658b56aedb48a4269bd4361c68/mjx/mujoco/mjx/benchmark/model/shadow_hand>`__
         - 215,000
         - 270,000
         - **1.25 x**

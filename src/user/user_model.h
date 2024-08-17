@@ -34,6 +34,17 @@
 typedef std::map<std::string, int, std::less<> > mjKeyMap;
 typedef std::array<mjKeyMap, mjNOBJECT> mjListKeyMap;
 
+typedef struct mjKeyInfo_ {
+  std::string name;
+  double time;
+  bool qpos;
+  bool qvel;
+  bool act;
+  bool ctrl;
+  bool mpos;
+  bool mquat;
+} mjKeyInfo;
+
 class mjCModel_ : public mjsElement {
  public:
   // attach namespaces
@@ -275,10 +286,21 @@ class mjCModel : public mjCModel_, private mjSpec {
   template <class T> void DeleteMaterial(std::vector<T*>& list,
                                          std::string_view name = "");
 
-  // save/restore the current state
-  void SaveState(const mjtNum* qpos, const mjtNum* qvel, const mjtNum* act);
+  // save the current state
+  template <class T>
+  void SaveState(const std::string& state_name, const T* qpos, const T* qvel, const T* act,
+                 const T* ctrl, const T* mpos, const T* mquat);
+
+  // restore the previously saved state
+  template <class T>
+  void RestoreState(const std::string& state_name, const mjtNum* pos0, const mjtNum* mpos0,
+                    const mjtNum* mquat0, T* qpos, T* qvel, T* act, T* ctrl, T* mpos, T* mquat);
+
+  // clear existing data
   void MakeData(const mjModel* m, mjData** dest);
-  void RestoreState(mjtNum* qpos, mjtNum* qvel, mjtNum* act);
+
+  // resolve keyframe references
+  void StoreKeyframes();
 
   // map from default class name to default class pointer
   std::unordered_map<std::string, mjCDef*> def_map;
@@ -359,8 +381,15 @@ class mjCModel : public mjCModel_, private mjSpec {
   // reset lists of kinematic tree
   void ResetTreeLists();
 
+  // save dof offsets in joints and actuators
+  void SaveDofOffsets();
+
+  // convert pending keyframes info to actual keyframes
+  void ResolveKeyframes(const mjModel* m);
+
   mjListKeyMap ids;   // map from object names to ids
   mjCError errInfo;   // last error info
   bool plugin_owner;  // this class allocated the plugins
+  std::vector<mjKeyInfo> key_pending_;  // attached keyframes
 };
 #endif  // MUJOCO_SRC_USER_USER_MODEL_H_

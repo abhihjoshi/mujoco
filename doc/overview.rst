@@ -804,7 +804,7 @@ first, followed by the limits of the second joint etc. This ordering reflects th
 row-major format.
 
 The available element types are defined in `mjmodel.h
-<https://github.com/google-deepmind/mujoco/blob/main/include/mujoco/mjmodel.h#L243>`_, in the enum type :ref:`mjtObj`.
+<https://github.com/google-deepmind/mujoco/blob/main/include/mujoco/mjmodel.h#L237>`_, in the enum type :ref:`mjtObj`.
 These enums are mostly used internally. One exception are the functions :ref:`mj_name2id` and :ref:`mj_id2name` in the
 MuJoCo API, which map element names to integer ids and vice versa. These functions take an element type as input.
 
@@ -851,10 +851,14 @@ Geoms (short for geometric primitive) are used to specify appearance and collisi
 and is rigidly attached to that body. Multiple geoms can be attached to the same body. This is particularly useful in
 light of the fact that MuJoCo's collision detector assumes that all geoms are convex (it internally replaces meshes with
 their convex hulls if the meshes are not convex). Thus if you want to model a non-convex shape, you have to decompose it
-into a union of convex geoms and attach all of them to the same body. Geoms can also have mass and inertia in the XML
-model (or rather material density which is used to compute the mass and inertia), but that is only used to compute the
-body mass and inertia in the model compiler. In the actual ``mjModel`` being simulated geoms do not have inertial
-properties.
+into a union of convex geoms and attach all of them to the same body.
+
+A geom can also have density or mass values specified in the XML, which the model compiler uses to compute the parent
+body's mass and inertia. Mass is either specified or computed from a geom's volume and :ref:`density
+<body-geom-density>`. Inertia is computed from the mass, shape, and uniform density assumption. If the
+:ref:`shellinertia <body-geom-shellinertia>` flag is set, mass is assumed to be uniformly distributed on the **surface**,
+:at:`density` is interpreted as mass-per-area, and the inertia contribution to the parent body is computed accordingly.
+In the actual ``mjModel`` being simulated, geoms do not have inertial properties.
 
 Sites are light geoms. They have the same appearance properties but cannot participate in collisions and cannot be used
 to infer body masses. On the other hand sites can do things that geoms cannot do: they can specify the volumes of touch

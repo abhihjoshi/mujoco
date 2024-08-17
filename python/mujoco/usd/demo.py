@@ -20,6 +20,7 @@ import pathlib
 import mujoco
 from mujoco.usd import exporter
 
+
 def generate_usd_trajectory(local_args):
   """Generates a USD file given the user arguments."""
   # load a model to mujoco
@@ -45,7 +46,7 @@ def generate_usd_trajectory(local_args):
 
   exp.add_light(pos=(0, 0, 0),
                 intensity=2000,
-                light_type="dome")
+                light_type='dome')
 
   exp.save_scene(filetype=local_args.export_extension)
 

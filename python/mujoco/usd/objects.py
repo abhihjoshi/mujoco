@@ -16,7 +16,7 @@
 
 import abc
 import collections
-from typing import Optional, Dict, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import mujoco
 import mujoco.usd.shapes as shapes_module
@@ -53,7 +53,7 @@ class USDObject(abc.ABC):
       geom: mujoco.MjvGeom,
       obj_name: str,
       rgba: np.ndarray = np.array([1, 1, 1, 1]),
-      geom_textures: Optional[Tuple[str, mujoco.mjtTexture]] = None
+      geom_textures: List[Optional[Tuple[str, mujoco.mjtTexture]]] = None
   ):
     self.stage = stage
     self.model = model
@@ -225,7 +225,7 @@ class USDMesh(USDObject):
       obj_name: str,
       dataid: int,
       rgba: np.ndarray = np.array([1, 1, 1, 1]),
-      geom_textures: Optional[Tuple[str, mujoco.mjtTexture]] = None
+      geom_textures: List[Optional[Tuple[str, mujoco.mjtTexture]]] = None
   ):
     super().__init__(stage, model, geom, obj_name, rgba, geom_textures)
 
@@ -243,11 +243,16 @@ class USDMesh(USDObject):
     )
     self.usd_mesh.GetFaceVertexIndicesAttr().Set(mesh_face)
 
-    if self.geom_textures and self.geom_textures[mujoco.mjtTextureRole.mjTEXROLE_RGB]:
+    if (
+        geom.matid != -1
+        and self.geom_textures[mujoco.mjtTextureRole.mjTEXROLE_RGB]
+    ):
       # setting mesh uv properties
       mesh_texcoord, mesh_facetexcoord = self._get_uv_geometry()
       self.texcoords = UsdGeom.PrimvarsAPI(self.usd_mesh).CreatePrimvar(
-          "UVMap", Sdf.ValueTypeNames.TexCoord2fArray, UsdGeom.Tokens.faceVarying
+          "UVMap",
+          Sdf.ValueTypeNames.TexCoord2fArray,
+          UsdGeom.Tokens.faceVarying,
       )
       self.texcoords.Set(mesh_texcoord)
       self.texcoords.SetIndices(Vt.IntArray(mesh_facetexcoord.tolist()))
@@ -319,7 +324,7 @@ class USDPrimitiveMesh(USDObject):
       geom: mujoco.MjvGeom,
       obj_name: str,
       rgba: np.ndarray = np.array([1, 1, 1, 1]),
-      geom_textures: Optional[Tuple[str, mujoco.mjtTexture]] = None
+      geom_textures: List[Optional[Tuple[str, mujoco.mjtTexture]]] = None
   ):
     super().__init__(stage, model, geom, obj_name, rgba, geom_textures)
 
@@ -338,11 +343,16 @@ class USDPrimitiveMesh(USDObject):
     self.usd_mesh.GetFaceVertexIndicesAttr().Set(mesh_face)
     self._set_refinement_properties(self.usd_prim)
 
-    if self.geom_textures and self.geom_textures[mujoco.mjtTextureRole.mjTEXROLE_RGB]:
+    if (
+        geom.matid != -1
+        and self.geom_textures[mujoco.mjtTextureRole.mjTEXROLE_RGB]
+    ):
       # setting mesh uv properties
       mesh_texcoord, _ = self._get_uv_geometry()
       self.texcoords = UsdGeom.PrimvarsAPI(self.usd_mesh).CreatePrimvar(
-          "UVMap", Sdf.ValueTypeNames.TexCoord2fArray, UsdGeom.Tokens.faceVarying
+          "UVMap",
+          Sdf.ValueTypeNames.TexCoord2fArray,
+          UsdGeom.Tokens.faceVarying,
       )
 
       self.texcoords.Set(mesh_texcoord)
@@ -354,7 +364,12 @@ class USDPrimitiveMesh(USDObject):
 
   def generate_primitive_mesh(self):
     """Generates the mesh for the primitive USD object."""
-    geom_rgb_texture = self.geom_textures[mujoco.mjtTextureRole.mjTEXROLE_RGB] if self.geom_textures else None
+    tex_role = mujoco.mjtTextureRole
+    geom_rgb_texture = (
+        self.geom_textures[tex_role.mjTEXROLE_RGB]
+        if self.geom_textures
+        else None
+    )
     texture_type = geom_rgb_texture[1] if geom_rgb_texture else None
     _, prim_mesh = shapes_module.mesh_factory(self.mesh_config, texture_type)
     prim_mesh.translate(-prim_mesh.get_center())
@@ -365,8 +380,8 @@ class USDPrimitiveMesh(USDObject):
 
     mesh_texcoord = np.array(self.prim_mesh.triangle_uvs)
     mesh_facetexcoord = np.asarray(self.prim_mesh.triangles)
-    
-    geom_rgb_texture = self.geom_textures[mujoco.mjtTextureRole.mjTEXROLE_RGB][1]
+    tex_role = mujoco.mjtTextureRole
+    geom_rgb_texture = self.geom_textures[tex_role.mjTEXROLE_RGB][1]
 
     if geom_rgb_texture == mujoco.mjtTexture.mjTEXTURE_2D:
       s_scale, t_scale = self.model.mat_texrepeat[self.geom.matid]
@@ -403,7 +418,7 @@ class USDTendon(USDObject):
       geom: mujoco.MjvGeom,
       obj_name: str,
       rgba: np.ndarray = np.array([1, 1, 1, 1]),
-      geom_textures: Optional[Tuple[str, mujoco.mjtTexture]] = None
+      geom_textures: List[Optional[Tuple[str, mujoco.mjtTexture]]] = None
   ):
     super().__init__(stage, model, geom, obj_name, rgba, geom_textures)
 
@@ -424,6 +439,7 @@ class USDTendon(USDObject):
 
     # setting mesh geometry properties for each of the parts in the tendon
     part_geometries = self._get_mesh_geometry()
+    part_geometry = None
     for name, part_geometry in part_geometries.items():
       self.usd_refs[name]["usd_mesh"].GetPointsAttr().Set(
           part_geometry["mesh_vert"]
@@ -435,7 +451,8 @@ class USDTendon(USDObject):
           part_geometry["mesh_face"]
       )
 
-    if self.geom_textures and self.geom_textures[mujoco.mjtTextureRole.mjTEXROLE_RGB]:
+    tex_role = mujoco.mjtTextureRole
+    if geom.matid != -1 and self.geom_textures[tex_role.mjTEXROLE_RGB]:
       # setting uv properties for each of the parts in the tendon
       part_uv_geometries = self._get_uv_geometry()
       for name, part_uv_geometry in part_uv_geometries.items():
@@ -455,16 +472,22 @@ class USDTendon(USDObject):
           self.attach_image_material(ref["usd_mesh"])
     else:
       for _, ref in self.usd_refs.items():
-          self._set_refinement_properties(ref["usd_prim"])
-          self.attach_solid_material(ref["usd_mesh"])
+        self._set_refinement_properties(ref["usd_prim"])
+        self.attach_solid_material(ref["usd_mesh"])
 
   def generate_primitive_mesh(self):
     """Generates the tendon mesh using primitives."""
     mesh_parts = {}
-    geom_rgb_texture = self.geom_textures[mujoco.mjtTextureRole.mjTEXROLE_RGB] if self.geom_textures else None
+    geom_rgb_texture = (
+        self.geom_textures[mujoco.mjtTextureRole.mjTEXROLE_RGB]
+        if self.geom_textures
+        else None
+    )
     texture_type = geom_rgb_texture[1] if geom_rgb_texture else None
     for part_config in self.mesh_config:
-      mesh_name, prim_mesh = shapes_module.mesh_factory(part_config, texture_type)
+      mesh_name, prim_mesh = shapes_module.mesh_factory(
+          part_config, texture_type
+      )
       prim_mesh.translate(-prim_mesh.get_center())
       mesh_parts[mesh_name] = prim_mesh
     return mesh_parts

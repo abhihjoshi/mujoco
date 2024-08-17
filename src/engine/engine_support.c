@@ -38,8 +38,8 @@
 
 //-------------------------- Constants -------------------------------------------------------------
 
- #define mjVERSION 320
-#define mjVERSIONSTRING "3.2.0"
+ #define mjVERSION 323
+#define mjVERSIONSTRING "3.2.3"
 
 // names of disable flags
 const char* mjDISABLESTRING[mjNDISABLE] = {
@@ -69,7 +69,8 @@ const char* mjENABLESTRING[mjNENABLE] = {
   "Fwdinv",
   "InvDiscrete",
   "MultiCCD",
-  "Island"
+  "Island",
+  "NativeCCD"
 };
 
 

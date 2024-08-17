@@ -35,7 +35,7 @@ typedef enum mjtState_ {          // state elements
 
   // convenience values for commonly used state specifications
   mjSTATE_PHYSICS       = mjSTATE_QPOS | mjSTATE_QVEL | mjSTATE_ACT,
-  mjSTATE_FULLPHYSICS   = mjSTATE_PHYSICS | mjSTATE_TIME | mjSTATE_PLUGIN,
+  mjSTATE_FULLPHYSICS   = mjSTATE_TIME | mjSTATE_PHYSICS | mjSTATE_PLUGIN,
   mjSTATE_USER          = mjSTATE_CTRL | mjSTATE_QFRC_APPLIED | mjSTATE_XFRC_APPLIED |
                           mjSTATE_EQ_ACTIVE | mjSTATE_MOCAP_POS | mjSTATE_MOCAP_QUAT |
                           mjSTATE_USERDATA,
@@ -430,8 +430,9 @@ typedef enum mjtEnableBit_ {      // enable optional feature bitflags
                                   // experimental features:
   mjENBL_MULTICCD     = 1<<4,     // multi-point convex collision detection
   mjENBL_ISLAND       = 1<<5,     // constraint island discovery
+  mjENBL_NATIVECCD    = 1<<6,     // native convex collision detection
 
-  mjNENABLE           = 6         // number of enable flags
+  mjNENABLE           = 7         // number of enable flags
 } mjtEnableBit;
 typedef enum mjtJoint_ {          // type of degree of freedom
   mjJNT_FREE          = 0,        // global position and orientation (quat)       (7)
@@ -2026,6 +2027,9 @@ typedef struct mjsTexture_ {       // texture specification
   // method 3: separate files
   mjStringVec* cubefiles;          // different file for each side of the cube
 
+  // method 4: from buffer read by user
+  mjBuffer* data;                  // texture data
+
   // flip options
   mjtByte hflip;                   // horizontal flip
   mjtByte vflip;                   // vertical flip
@@ -3584,6 +3588,7 @@ mjsHField* mjs_asHField(mjsElement* element);
 mjsSkin* mjs_asSkin(mjsElement* element);
 mjsTexture* mjs_asTexture(mjsElement* element);
 mjsMaterial* mjs_asMaterial(mjsElement* element);
+void mjs_setBuffer(mjBuffer* dest, const void* array, int size);
 void mjs_setString(mjString* dest, const char* text);
 void mjs_setStringVec(mjStringVec* dest, const char* text);
 mjtByte mjs_setInStringVec(mjStringVec* dest, int i, const char* text);

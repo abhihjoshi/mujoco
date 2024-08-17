@@ -16,7 +16,7 @@
 #define MUJOCO_MUJOCO_H_
 
 // header version; should match the library version as returned by mj_version()
-#define mjVERSION_HEADER 320
+#define mjVERSION_HEADER 323
 
 // needed to define size_t, fabs and log10
 #include <stdlib.h>
@@ -1628,6 +1628,9 @@ MJAPI mjsMaterial* mjs_asMaterial(mjsElement* element);
 
 
 //---------------------------------- Attribute setters ---------------------------------------------
+
+// Copy buffer.
+MJAPI void mjs_setBuffer(mjBuffer* dest, const void* array, int size);
 
 // Copy text to string.
 MJAPI void mjs_setString(mjString* dest, const char* text);

@@ -31,7 +31,6 @@ from PIL import Image as im
 from PIL import ImageOps
 import scipy
 import termcolor
-import tqdm
 
 import pxr
 from pxr import Sdf
@@ -276,11 +275,13 @@ class USDExporter:
     geom_name = self._get_geom_name(geom)
     assert geom_name not in self.geom_names
 
-    geom_textures = (
-      [(self.texture_files[i], self.model.tex_type[i]) if i != -1 else None for i in self.model.mat_texid[geom.matid]]
-      if geom.matid != -1
-      else None
-    )
+    if geom.matid == -1:
+      geom_textures = []
+    else:
+      geom_textures = [
+          (self.texture_files[i], self.model.tex_type[i]) if i != -1 else None
+          for i in self.model.mat_texid[geom.matid]
+      ]
 
     # handling meshes in our scene
     if geom.type == mujoco.mjtGeom.mjGEOM_MESH:

@@ -14,8 +14,6 @@
 # ==============================================================================
 """Camera handling for USD exporter."""
 
-from typing import List, Optional, Tuple
-
 import mujoco.usd.utils as utils_module
 
 import numpy as np
@@ -48,7 +46,7 @@ class USDCamera:
     self.usd_camera.GetClippingRangeAttr().Set(Gf.Vec2f(1e-4, 1e6))
 
   def update(self, cam_pos: np.ndarray, cam_mat: np.ndarray, frame: int):
-    """Updates the position and orientation of the camera in the scene"""
+    """Updates the position and orientation of the camera in the scene."""
     transformation_mat = utils_module.create_transform_matrix(
         rotation_matrix=cam_mat, translation_vector=cam_pos
     ).T

@@ -22,6 +22,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -56,6 +57,7 @@
 #include "engine/engine_crossplatform.h"
 #include "engine/engine_io.h"
 #include "engine/engine_plugin.h"
+#include "engine/engine_sort.h"
 #include "engine/engine_util_errmem.h"
 #include "user/user_cache.h"
 #include "user/user_model.h"
@@ -248,12 +250,6 @@ mjCMesh::~mjCMesh() {
 
 
 
-void mjCMesh::set_needhull(bool needhull) {
-  needhull_ = needhull;
-}
-
-
-
 // generate mesh using marching cubes
 void mjCMesh::LoadSDF() {
   if (plugin_name.empty() && plugin_instance_name.empty()) {
@@ -337,8 +333,10 @@ void mjCMesh::LoadSDF() {
   delete[] field;
 }
 
-void mjCMesh::CacheOBJ(mjCCache* cache, const mjResource* resource) {
+void mjCMesh::CacheMesh(mjCCache* cache, const mjResource* resource,
+                        std::string_view asset_type) {
   if (cache == nullptr) return;
+  if (asset_type != "model/obj") return;  // only OBJ files are cached
 
   // cache mesh data into new mesh object
   mjCMesh *mesh =  new mjCMesh();
@@ -378,6 +376,8 @@ void mjCMesh::Compile(const mjVFS* vfs) {
   CopyFromSpec();
   visual_ = true;
   std::string asset_type = GetAssetContentType(file_, content_type_);
+  mjResource* resource = nullptr;
+  mjCCache *cache = reinterpret_cast<mjCCache*>(mj_globalCache());
 
   // load file
   if (!file_.empty()) {
@@ -403,25 +403,30 @@ void mjCMesh::Compile(const mjVFS* vfs) {
     }
 
     std::string filename = mjuu_combinePaths(model->meshdir_, file_);
-    mjResource* resource = LoadResource(model->modelfiledir_, filename, vfs);
+    resource = LoadResource(model->modelfiledir_, filename, vfs);
 
-    try {
-      if (asset_type == "model/stl") {
-        LoadSTL(resource);
-      } else if (asset_type == "model/obj") {
-        // try loading from cache
-        mjCCache *cache = reinterpret_cast<mjCCache*>(mj_globalCache());
-        if (!cache || !LoadCachedOBJ(cache, resource)) {
+    // try loading from cache
+    if (cache != nullptr && LoadCachedMesh(cache, resource)) {
+      mju_closeResource(resource);
+      resource = nullptr;
+    }
+
+    if (resource != nullptr) {
+      try {
+        if (asset_type == "model/stl") {
+          LoadSTL(resource);
+        } else if (asset_type == "model/obj"){
           LoadOBJ(resource);
-          CacheOBJ(cache, resource);
+        } else {
+          LoadMSH(resource);
         }
-      } else {
-        LoadMSH(resource);
+      } catch (mjCError err) {
+        mju_closeResource(resource);
+        throw err;
       }
+
+      CacheMesh(cache, resource, asset_type);
       mju_closeResource(resource);
-    } catch (mjCError err) {
-      mju_closeResource(resource);
-      throw err;
     }
 
     // check repeated mesh data
@@ -455,19 +460,16 @@ void mjCMesh::Compile(const mjVFS* vfs) {
     } else if (facetexcoord_.empty()) {
       facetexcoord_ = spec_facetexcoord_;
     }
-  }
-
-  // create using marching cubes
-  else if (plugin.active) {
-    LoadSDF();
+  } else if (plugin.active) {
+    LoadSDF();  // create using marching cubes
   }
 
   // check sizes
-  if (vert_.size()<12) throw mjCError(this, "at least 4 vertices required");
-  if (vert_.size()%3) throw mjCError(this, "vertex data must be a multiple of 3");
-  if (normal_.size()%3) throw mjCError(this, "normal data must be a multiple of 3");
-  if (texcoord_.size()%2) throw mjCError(this, "texcoord must be a multiple of 2");
-  if (face_.size()%3) throw mjCError(this, "face data must be a multiple of 3");
+  if (vert_.size() < 12) throw mjCError(this, "at least 4 vertices required");
+  if (vert_.size() % 3) throw mjCError(this, "vertex data must be a multiple of 3");
+  if (normal_.size() % 3) throw mjCError(this, "normal data must be a multiple of 3");
+  if (texcoord_.size() % 2) throw mjCError(this, "texcoord must be a multiple of 2");
+  if (face_.size() % 3) throw mjCError(this, "face data must be a multiple of 3");
 
   // check texcoord size if no face texcoord indices are given
   if (!texcoord_.empty() && texcoord_.size() != 2 * nvert() &&
@@ -566,7 +568,7 @@ void mjCMesh::Compile(const mjVFS* vfs) {
   }
 
   // make bounding volume hierarchy
-  if (tree_.bvh.empty()) {
+  if (tree_.Bvh().empty()) {
     face_aabb_.assign(6*nface(), 0);
     tree_.AllocateBoundingVolumes(nface());
     for (int i=0; i < nface(); i++) {
@@ -980,7 +982,7 @@ void mjCMesh::LoadOBJ(mjResource* resource) {
 
 
 // load OBJ from cached asset, return true on success
-bool mjCMesh::LoadCachedOBJ(mjCCache *cache, const mjResource* resource) {
+bool mjCMesh::LoadCachedMesh(mjCCache *cache, const mjResource* resource) {
   // check that asset has all data
   if (!cache->PopulateData(resource, [&](const void* data) {
     const mjCMesh* mesh = static_cast<const mjCMesh*>(data);
@@ -1913,7 +1915,7 @@ void mjCMesh::MakeCenter(void) {
     // compute circumradius
     double norm_a_2 = mjuu_dot3(a, a);
     double norm_b_2 = mjuu_dot3(b, b);
-    double area = mjuu_normvec(nrm, 3);
+    double area = sqrt(mjuu_dot3(nrm, nrm));
 
     // compute circumcenter
     double res[3], vec[3] = {

@@ -14,30 +14,36 @@
 # ==============================================================================
 """Built-in shapes for USD exporter."""
 
-from typing import Dict, Any, Tuple, Optional, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import mujoco
 import numpy as np
 
+
 def get_triangle_uvs(
-    vertices: np.array,
-    triangles: np.array,
+    vertices: np.ndarray,
+    triangles: np.ndarray,
     texture_type: Optional[mujoco.mjtTexture]
 ):
-  if texture_type == None:
+  """Returns UV coordinates for a given mesh."""
+  if not texture_type:
     return None
 
   triangle_uvs = []
   if texture_type == mujoco.mjtTexture.mjTEXTURE_2D:
-    triangle_uvs = [[vertices[i][0], vertices[i][1]] for i in np.nditer(triangles)]
-    
+    triangle_uvs = [
+        [vertices[i][0], vertices[i][1]] for i in np.nditer(triangles)
+    ]
+
   elif texture_type == mujoco.mjtTexture.mjTEXTURE_CUBE:
     center = np.mean(vertices, axis=0)
     for vertex_id in np.nditer(triangles):
       x, y, z = vertices[vertex_id] - center
 
       abs_x, abs_y, abs_z = abs(x), abs(y), abs(z)
-      
+      u = 0
+      v = 0
+
       if x > 0 and abs_x >= abs_y and abs_x >= abs_z:
         u = -z / abs_x
         v = y / abs_x
@@ -66,17 +72,33 @@ def get_triangle_uvs(
       triangle_uvs.append([u, v])
   elif texture_type == mujoco.mjtTexture.mjTEXTURE_SKYBOX:
     # defaults to 2D mapping temporarily
-    triangle_uvs = [[vertices[i][0], vertices[i][1]] for i in np.nditer(triangles)]
+    triangle_uvs = [
+        [vertices[i][0], vertices[i][1]] for i in np.nditer(triangles)
+    ]
 
   return np.array(triangle_uvs)
 
-class TriangleMesh():
-  """ Store UV and geometry information for a primitve mesh
+
+class TriangleMesh:
+  """Store UV and geometry information for a primitive mesh.
+
+  Attributes:
+    vertices: A numpy array of vertices.
+    triangles: A numpy array of triangles.
+    triangle_uvs: A numpy array of UV coordinates.
   """
+
   def __init__(self,
-               vertices: np.array,
-               triangles: np.array,
-               triangle_uvs: np.array):
+               vertices: np.ndarray,
+               triangles: np.ndarray,
+               triangle_uvs: np.ndarray):
+    """Creates a TriangleMesh object.
+
+    Args:
+      vertices: A numpy array of vertices.
+      triangles: A numpy array of triangles.
+      triangle_uvs: A numpy array of UV coordinates.
+    """
     self.vertices = vertices
     self.triangles = triangles
     self.triangle_uvs = triangle_uvs
@@ -88,7 +110,8 @@ class TriangleMesh():
       height: float,
       depth: float,
       texture_type: Optional[mujoco.mjtTexture]
-  ):
+  ) -> TriangleMesh:
+    """Creates a box."""
     vertices = np.array([[0.0, 0.0, 0.0],
                          [width, 0.0, 0.0],
                          [0.0, 0.0, depth],
@@ -97,7 +120,7 @@ class TriangleMesh():
                          [width, height, 0.0],
                          [0.0, height, depth],
                          [width, height, depth]])
-    
+
     triangles = np.array([[4, 7, 5],
                           [4, 6, 7],
                           [0, 2, 4],
@@ -110,9 +133,9 @@ class TriangleMesh():
                           [2, 7, 6],
                           [0, 4, 1],
                           [1, 4, 5]])
-    
+
     triangle_uvs = get_triangle_uvs(vertices, triangles, texture_type)
-    
+
     return TriangleMesh(vertices, triangles, triangle_uvs)
 
   @classmethod
@@ -121,7 +144,8 @@ class TriangleMesh():
       radius: float,
       texture_type: Optional[mujoco.mjtTexture],
       resolution: int
-  ):
+  ) -> TriangleMesh:
+    """Creates a sphere."""
     vertices = []
     triangles = []
     for i in range(2*resolution + 1):
@@ -145,16 +169,17 @@ class TriangleMesh():
     triangles = np.array(triangles)
 
     triangle_uvs = get_triangle_uvs(vertices, triangles, texture_type)
-    
+
     return TriangleMesh(vertices, triangles, triangle_uvs)
 
   @classmethod
   def create_hemisphere(
-    cls,
-    radius: float,
-    texture_type: Optional[mujoco.mjtTexture],
-    resolution: int
-  ):
+      cls,
+      radius: float,
+      texture_type: Optional[mujoco.mjtTexture],
+      resolution: int,
+  ) -> TriangleMesh:
+    """Creates a hemisphere."""
     vertices = []
     triangles = []
     for i in range(resolution + 1):
@@ -183,7 +208,7 @@ class TriangleMesh():
     triangles = np.array(triangles)
 
     triangle_uvs = get_triangle_uvs(vertices, triangles, texture_type)
-    
+
     return TriangleMesh(vertices, triangles, triangle_uvs)
 
   @classmethod
@@ -193,7 +218,8 @@ class TriangleMesh():
       height: float,
       texture_type: Optional[mujoco.mjtTexture],
       resolution: int
-  ):
+  ) -> TriangleMesh:
+    """Creates a cylinder."""
     vertices = []
     triangles = []
 
@@ -225,23 +251,23 @@ class TriangleMesh():
     triangles = np.array(triangles)
 
     triangle_uvs = get_triangle_uvs(vertices, triangles, texture_type)
-    
+
     return TriangleMesh(vertices, triangles, triangle_uvs)
 
   def translate(self, translation: np.array):
     self.vertices = self.vertices + translation
 
-  def rotate(self, rotation: np.array, center: Tuple[float]):
+  def rotate(self, rotation: np.array, center: Tuple[float, ...]):
     translated_point = self.vertices - center
     self.vertices = np.dot(translated_point, rotation) + center
-  
+
   def scale(self, scale: np.array):
     self.vertices = self.vertices * scale
 
   def get_center(self):
     center = np.mean(self.vertices, axis=0)
     return center
-  
+
   def __add__(self, other):
     if isinstance(other, TriangleMesh):
       new_vertices = np.vstack((self.vertices, other.vertices))
@@ -252,6 +278,7 @@ class TriangleMesh():
         new_triangle_uvs = np.vstack((self.triangle_uvs, other.triangle_uvs))
       return TriangleMesh(new_vertices, new_triangles, new_triangle_uvs)
     raise TypeError(f"Cannot add TriangleMesh with {type(other)}")
+
 
 def decouple_config(config: Dict[str, Any]):
   """Breaks a shape config into is subcomponent shapes."""
@@ -288,7 +315,9 @@ def mesh_config_generator(
     config = {"name": name, "sphere": {"radius": float(size[0])}}
   elif geom_type == mujoco.mjtGeom.mjGEOM_CAPSULE:
     cylinder = mesh_config_generator(name, mujoco.mjtGeom.mjGEOM_CYLINDER, size)
-    cylinder["cylinder"]["transform"] = {"transform": {"translate": (0, 0, size[2])}}
+    cylinder["cylinder"]["transform"] = {
+        "transform": {"translate": (0, 0, size[2])}
+    }
     config = {
         "name": name,
         "cylinder": cylinder["cylinder"],
@@ -339,6 +368,7 @@ def mesh_config_generator(
 
   return config
 
+
 def mesh_factory(
     mesh_config: Dict[str, Any],
     texture_type: Optional[mujoco.mjtTexture],
@@ -353,8 +383,6 @@ def mesh_factory(
 
     if "name" in shape:
       continue
-
-    prim_mesh = None
 
     if "box" in shape:
       prim_mesh = TriangleMesh.create_box(
