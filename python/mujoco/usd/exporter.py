@@ -425,7 +425,11 @@ please set shareable to be false.
         data, camera=camera, scene_option=scene_option,
     )
     avg_camera, R = self._get_camera_orientation()
-    self.usd_cameras[PRIMARY_CAMERA_NAME].update(cam_pos=avg_camera.pos, cam_mat=R, frame=self.updates)
+    self.usd_cameras[PRIMARY_CAMERA_NAME].update(
+      cam_pos=avg_camera.pos,
+      cam_mat=R,
+      frame=self.updates if not self.online else None
+    )
 
     # update the names of the fixed cameras in the scene
     if self.camera_names is not None:
@@ -434,7 +438,11 @@ please set shareable to be false.
           data, camera=camera_name, scene_option=scene_option
         )
         avg_camera, R = self._get_camera_orientation()
-        self.usd_cameras[camera_name].update(cam_pos=avg_camera.pos, cam_mat=R, frame=self.updates)
+        self.usd_cameras[camera_name].update(
+          cam_pos=avg_camera.pos,
+          cam_mat=R,
+          frame=self.updates if not self.online else None
+        )
 
   def add_light(
       self,
