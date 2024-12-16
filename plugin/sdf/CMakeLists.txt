@@ -32,6 +32,8 @@ set(MUJOCO_SDF_SRCS
     sdflib.h
     torus.cc
     torus.h
+    tactile_base.cc
+    tactile_base.h
 )
 
 add_library(sdf SHARED)
