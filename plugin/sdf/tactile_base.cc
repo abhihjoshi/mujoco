@@ -12,22 +12,17 @@ namespace mujoco::plugin::sdf {
 namespace {
 
 static mjtNum distanceBottom(const mjtNum p[3], const mjtNum bottomSize[3]) {
-  mjtNum q[3] = { abs(mju_p[0]) - bottomSize[0], abs(p[1]) - bottomSize[1], abs(p[2]) - bottomSize[2] };
+  mjtNum q[3] = { abs(p[0]) - bottomSize[0], abs(p[1]) - bottomSize[1], abs(p[2]) - bottomSize[2] };
   mjtNum q_abs[3] = { mju_max(q[0], 0), mju_max(q[1], 0), mju_max(q[2], 0) };
   mjtNum q_len = mju_sqrt(q_abs[0]*q_abs[0] + q_abs[1]*q_abs[1] + q_abs[2]*q_abs[2]);
   return q_len + mju_min(mju_max(q[0], mju_max(q[1], q[2])), 0);
 }
 
 static mjtNum distance(const mjtNum p[3], const mjtNum gap[1]) {
-    // return mju_sqrt(p[0]*p[0] + p[1]*p[1] + p[2]*p[2]) - gap[0];
-
-    const mjtNum bottomSize[3] = { 0.1, 0.1, 0.02 };
+    const mjtNum bottomSize[3] = { 0.05, 0.05, 0.01 }; // half length of the bottom box
     // const mjtNum topSize[3] = { 0.037, 0.037, 0.05 };
 
-    mjtNum offsetPoint[3];
-    offsetPoint[2] = p[2] - bottomSize[2];
-
-    return distanceBottom(offsetPoint, bottomSize);
+    return distanceBottom(p, bottomSize);
 }
 
 }  // namespace
