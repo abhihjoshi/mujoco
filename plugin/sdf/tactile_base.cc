@@ -11,6 +11,45 @@
 namespace mujoco::plugin::sdf {
 namespace {
 
+// checks if the point is within some z bound of the bottom
+static bool checkBounds(const mjtNum p[3], mjtNum x, mjtNum y, mjtNum z, bool checkZ) {
+  mjtNum p_abs[3] = { abs(p[0]), abs(p[1]), abs(p[2]) };
+  return p_abs[0] <= x && p_abs[1] <= y && (!checkZ || p_abs[2] <= z);
+}
+
+static mjtNum distanceInserted(const mjtNum p[3], mjtNum x, mjtNum y) {
+  mjtNum p_abs[3] = { abs(p[0]), abs(p[1]), abs(p[2]) };
+  return mju_min(x - p_abs[0], mju_min(y - p_abs[1], p_abs[2]));
+}
+
+static mjtNum distanceEngaged(const mjtNum p[3], mjtNum x, mjtNum y, mjtNum z) {
+  mjtNum p_abs[3] = { abs(p[0]), abs(p[1]), abs(p[2]) };
+  mjtNum q[3] = { x - p_abs[0], y - p_abs[1], p_abs[2] - z };
+  mjtNum xDist = mju_sqrt(q[0] * q[0] + q[2] * q[2]);
+  mjtNum yDist = mju_sqrt(q[1] * q[1] + q[2] * q[2]);
+  return mju_min(p_abs[2], mju_min(xDist, yDist));
+}
+
+static mjtNum distanceTop(const mjtNum p[3], const mjtNum topSize[3]) {
+
+  // distance if inserted
+  if (checkBounds(p, topSize[0] - 0.005, topSize[1] - 0.005, topSize[2], true)) {
+    return distanceInserted(p, topSize[0] - 0.005, topSize[1] - 0.005);
+  }
+  // distance if engaged
+  else if (checkBounds(p, topSize[0] - 0.005, topSize[1] - 0.005, 0, false)) {
+    return distanceEngaged(p, topSize[0] - 0.005, topSize[1] - 0.005, topSize[2]);
+  }
+
+  // distance if not inserted or engaged 
+  mjtNum q[3] = { abs(p[0]) - topSize[0], abs(p[1]) - topSize[1], abs(p[2]) - topSize[2] };
+  mjtNum q_abs[3] = { mju_max(q[0], 0), mju_max(q[1], 0), mju_max(q[2], 0) };
+  mjtNum q_len = mju_sqrt(q_abs[0]*q_abs[0] + q_abs[1]*q_abs[1] + q_abs[2]*q_abs[2]);
+  mjtNum defaultDistance = q_len + mju_min(mju_max(q[0], mju_max(q[1], q[2])), 0);
+
+  return defaultDistance;
+}
+
 static mjtNum distanceBottom(const mjtNum p[3], const mjtNum bottomSize[3]) {
   mjtNum q[3] = { abs(p[0]) - bottomSize[0], abs(p[1]) - bottomSize[1], abs(p[2]) - bottomSize[2] };
   mjtNum q_abs[3] = { mju_max(q[0], 0), mju_max(q[1], 0), mju_max(q[2], 0) };
@@ -20,9 +59,23 @@ static mjtNum distanceBottom(const mjtNum p[3], const mjtNum bottomSize[3]) {
 
 static mjtNum distance(const mjtNum p[3], const mjtNum gap[1]) {
     const mjtNum bottomSize[3] = { 0.05, 0.05, 0.01 }; // half length of the bottom box
-    // const mjtNum topSize[3] = { 0.037, 0.037, 0.05 };
+    const mjtNum topSize[3] = { (0.035 + 2 * gap[0]) / 2, 
+                                (0.035 + 2 * gap[0]) / 2,
+                                0.025 };
 
-    return distanceBottom(p, bottomSize);
+    // SDF of the bottom of the base
+    mjtNum offsetPointBottom[3];
+    offsetPointBottom[0] = p[0];
+    offsetPointBottom[1] = p[1];
+    offsetPointBottom[2] = p[2] - bottomSize[2];
+
+    // SDF of the top of the base
+    mjtNum offsetPointTop[3];
+    offsetPointTop[0] = p[0];
+    offsetPointTop[1] = p[1];
+    offsetPointTop[2] = p[2] - (2 * bottomSize[2] + topSize[2]);
+
+    return mju_min(distanceTop(offsetPointTop, topSize), distanceBottom(offsetPointBottom, bottomSize));
 }
 
 }  // namespace
@@ -119,9 +172,10 @@ void TactileBase::RegisterPlugin() {
       };
   plugin.sdf_aabb =
       +[](mjtNum aabb[6], const mjtNum* attributes) {
-        aabb[0] = aabb[1] = aabb[2] = 0;
+        aabb[0] = aabb[1] = 0;
+        aabb[2] = (0.02 + 0.05) / 2;
         aabb[3] = aabb[4] = 0.05;
-        aabb[5] = 0.01;
+        aabb[5] = (0.02 + 0.05) / 2;
       };
   plugin.sdf_attribute =
       +[](mjtNum attribute[], const char* name[], const char* value[]) {
